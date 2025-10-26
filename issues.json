@@ -1,0 +1,255 @@
+{
+  "repository": "pedaganim/duemate",
+  "issues": [
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Set up project infrastructure and development environment",
+      "description": "Initialize the project with necessary infrastructure:\n- Set up project structure (frontend, backend, database)\n- Configure development environment (Docker, dev dependencies)\n- Set up CI/CD pipeline basics\n- Configure linting and code quality tools\n- Add basic project documentation (CONTRIBUTING.md, setup instructions)",
+      "acceptance_criteria": [
+        "Project structure is defined and documented",
+        "Development environment can be set up with clear instructions",
+        "Basic CI/CD pipeline runs successfully",
+        "Code quality tools are configured"
+      ],
+      "labels": ["setup", "infrastructure", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Design and implement database schema for invoices and clients",
+      "description": "Create the database schema for core entities:\n- Clients table (name, email, phone, address, payment terms)\n- Invoices table (invoice number, amount, due date, status, client reference)\n- Reminders table (invoice reference, reminder date, status, type)\n- Set up migrations\n- Add database seeding for development",
+      "acceptance_criteria": [
+        "Database schema is designed and documented",
+        "Migration scripts are created",
+        "Database can be initialized with seed data",
+        "Schema supports all core MVP features"
+      ],
+      "labels": ["database", "backend", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Implement client creation and listing functionality",
+      "description": "Build the ability to manage clients:\n- API endpoint to create new clients\n- API endpoint to list all clients\n- API endpoint to get client details\n- Input validation for client data\n- Basic client model and repository pattern",
+      "acceptance_criteria": [
+        "POST /api/clients creates a new client",
+        "GET /api/clients returns list of clients",
+        "GET /api/clients/:id returns client details",
+        "Input validation prevents invalid data",
+        "Unit tests cover client endpoints"
+      ],
+      "labels": ["backend", "feature", "clients", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Implement client update and deletion functionality",
+      "description": "Complete client management CRUD operations:\n- API endpoint to update existing clients\n- API endpoint to delete clients\n- Handle client deletion with existing invoices (soft delete or validation)\n- Update validation rules",
+      "acceptance_criteria": [
+        "PUT /api/clients/:id updates client information",
+        "DELETE /api/clients/:id removes or soft-deletes client",
+        "Cannot delete clients with active invoices (or handle gracefully)",
+        "Unit tests cover update and delete operations"
+      ],
+      "labels": ["backend", "feature", "clients", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Implement invoice creation and listing functionality",
+      "description": "Build core invoice management:\n- API endpoint to create new invoices\n- API endpoint to list invoices with filtering (by client, status, date range)\n- Link invoices to clients\n- Calculate and store invoice metadata (days until due, overdue status)\n- Invoice number generation",
+      "acceptance_criteria": [
+        "POST /api/invoices creates a new invoice",
+        "GET /api/invoices returns paginated list with filters",
+        "Invoice automatically calculates due date based on client payment terms",
+        "Invoice numbers are generated automatically and sequentially",
+        "Unit tests cover invoice creation and listing"
+      ],
+      "labels": ["backend", "feature", "invoices", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Implement invoice update, deletion, and status management",
+      "description": "Complete invoice management operations:\n- API endpoint to update invoice details\n- API endpoint to delete invoices\n- Invoice status management (draft, sent, paid, overdue, cancelled)\n- Handle status transitions and validations",
+      "acceptance_criteria": [
+        "PUT /api/invoices/:id updates invoice information",
+        "PATCH /api/invoices/:id/status updates invoice status",
+        "DELETE /api/invoices/:id removes invoice",
+        "Status transitions follow business rules",
+        "Unit tests cover all operations"
+      ],
+      "labels": ["backend", "feature", "invoices", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Implement automated reminder scheduling and triggering",
+      "description": "Build the reminder scheduling system:\n- Reminder scheduling logic (before due date, on due date, after due date)\n- Background job/cron system for checking and triggering reminders\n- Reminder status tracking (scheduled, sent, failed)\n- Configurable reminder templates\n- Support for multiple reminder types (email initially)",
+      "acceptance_criteria": [
+        "Reminders are automatically scheduled when invoices are created",
+        "Background job checks for due reminders every hour",
+        "Reminders can be manually triggered via API",
+        "Reminder history is tracked and viewable",
+        "Configurable reminder timing (e.g., 7 days before, 1 day before, on due date)"
+      ],
+      "labels": ["backend", "feature", "reminders", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Implement email delivery for invoice reminders",
+      "description": "Build email reminder functionality:\n- Email service integration (SendGrid, AWS SES, or SMTP)\n- Email template system for reminders\n- Personalized email content (client name, invoice details, amount due)\n- Email delivery tracking and status\n- Handle email failures and retries",
+      "acceptance_criteria": [
+        "Email service is configured and tested",
+        "Professional email templates are created",
+        "Emails include invoice details and payment instructions",
+        "Email delivery status is tracked",
+        "Failed emails are retried with exponential backoff"
+      ],
+      "labels": ["backend", "feature", "reminders", "notifications", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Build client management user interface",
+      "description": "Create UI for managing clients:\n- Client list view with search and sorting\n- Client detail view\n- Create/Edit client form\n- Delete client confirmation\n- Responsive design for mobile and desktop",
+      "acceptance_criteria": [
+        "Users can view list of all clients",
+        "Users can search and filter clients",
+        "Users can create new clients via form",
+        "Users can edit existing clients",
+        "Users can delete clients with confirmation",
+        "UI is responsive and user-friendly"
+      ],
+      "labels": ["frontend", "feature", "clients", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Build invoice management user interface",
+      "description": "Create UI for managing invoices:\n- Invoice list view with filters (status, client, date range)\n- Invoice detail view showing all information and reminder history\n- Create/Edit invoice form\n- Invoice status management\n- Visual indicators for overdue invoices",
+      "acceptance_criteria": [
+        "Users can view list of invoices with filtering",
+        "Users can create new invoices",
+        "Users can edit invoice details",
+        "Users can update invoice status",
+        "Overdue invoices are visually highlighted",
+        "Invoice details show reminder history"
+      ],
+      "labels": ["frontend", "feature", "invoices", "P0"]
+    },
+    {
+      "priority": "P0",
+      "category": "Core",
+      "title": "Create dashboard with invoice and reminder overview",
+      "description": "Build a dashboard for quick overview:\n- Summary cards (total invoices, overdue amount, upcoming reminders)\n- Recent activity feed\n- Quick actions (create invoice, add client)\n- Charts showing invoice status distribution\n- Upcoming reminders list",
+      "acceptance_criteria": [
+        "Dashboard shows key metrics at a glance",
+        "Users can see overdue invoices prominently",
+        "Recent activity is displayed",
+        "Quick action buttons are easily accessible",
+        "Dashboard is the default landing page"
+      ],
+      "labels": ["frontend", "feature", "dashboard", "P0"]
+    },
+    {
+      "priority": "P1",
+      "category": "Nice-to-have",
+      "title": "Integrate bank account synchronization for payment tracking",
+      "description": "Add bank sync capability to automatically track payments:\n- Research and integrate banking API (Plaid, Yodlee, or similar)\n- Match bank transactions to invoices\n- Automatically mark invoices as paid when payment detected\n- Bank account connection management UI\n- Transaction history view",
+      "acceptance_criteria": [
+        "Users can connect their bank accounts",
+        "Bank transactions are synced regularly",
+        "Payments are matched to invoices automatically",
+        "Users can manually match transactions if needed",
+        "Bank connection status is visible in settings"
+      ],
+      "labels": ["backend", "frontend", "feature", "bank-sync", "P1"]
+    },
+    {
+      "priority": "P1",
+      "category": "Nice-to-have",
+      "title": "Implement AI-powered voice call reminders",
+      "description": "Add AI voice reminder capability:\n- Integrate with voice API service (Twilio, AWS Connect, or similar)\n- Text-to-speech for invoice reminders\n- AI voice agent for answering basic questions\n- Call scheduling and status tracking\n- Voice reminder configuration (opt-in/opt-out)",
+      "acceptance_criteria": [
+        "System can place automated voice calls",
+        "Voice message includes invoice details",
+        "Call status is tracked (answered, no answer, failed)",
+        "Users can enable/disable voice reminders per client",
+        "Voice reminders respect time zones and business hours"
+      ],
+      "labels": ["backend", "feature", "ai", "voice-reminders", "P1"]
+    },
+    {
+      "priority": "P1",
+      "category": "Nice-to-have",
+      "title": "Add whitelabel/multi-tenant support",
+      "description": "Enable whitelabel capability for reselling:\n- Multi-tenant architecture (tenant isolation)\n- Custom branding per tenant (logo, colors, domain)\n- Tenant management admin interface\n- Separate database schemas or row-level security\n- Tenant-specific email templates",
+      "acceptance_criteria": [
+        "Multiple tenants can use the system independently",
+        "Each tenant can customize branding",
+        "Data is completely isolated between tenants",
+        "Tenant admin can manage their own settings",
+        "Custom domains can be configured per tenant"
+      ],
+      "labels": ["backend", "frontend", "feature", "whitelabel", "multi-tenant", "P1"]
+    },
+    {
+      "priority": "P2",
+      "category": "Future",
+      "title": "Build reporting and analytics dashboard",
+      "description": "Create reporting capabilities:\n- Revenue reports (by period, by client)\n- Aging reports (invoice age, overdue duration)\n- Reminder effectiveness metrics\n- Client payment behavior analysis\n- Export reports to CSV/PDF",
+      "acceptance_criteria": [
+        "Users can generate various financial reports",
+        "Reports can be filtered by date range and client",
+        "Visual charts display key metrics",
+        "Reports can be exported",
+        "Report data is accurate and up-to-date"
+      ],
+      "labels": ["frontend", "backend", "feature", "reporting", "P2"]
+    },
+    {
+      "priority": "P2",
+      "category": "Future",
+      "title": "Develop mobile application for iOS and Android",
+      "description": "Create mobile apps for on-the-go management:\n- React Native or Flutter mobile app\n- Core features from web app\n- Push notifications for reminders\n- Mobile-optimized UI\n- Offline capability for viewing invoices",
+      "acceptance_criteria": [
+        "Mobile app available on iOS and Android",
+        "Users can manage clients and invoices",
+        "Push notifications work reliably",
+        "App works offline for viewing data",
+        "App syncs when connection is restored"
+      ],
+      "labels": ["mobile", "feature", "P2"]
+    }
+  ],
+  "sprint_plan": {
+    "sprint_1": {
+      "name": "Foundation",
+      "issues": [1, 2],
+      "duration": "1-2 weeks"
+    },
+    "sprint_2": {
+      "name": "Core Backend",
+      "issues": [3, 4, 5, 6],
+      "duration": "2 weeks"
+    },
+    "sprint_3": {
+      "name": "Reminders",
+      "issues": [7, 8],
+      "duration": "1-2 weeks"
+    },
+    "sprint_4": {
+      "name": "Core Frontend",
+      "issues": [9, 10, 11],
+      "duration": "2 weeks"
+    },
+    "sprint_5_plus": {
+      "name": "Enhancements",
+      "issues": [12, 13, 14, 15, 16],
+      "duration": "Ongoing"
+    }
+  }
+}
