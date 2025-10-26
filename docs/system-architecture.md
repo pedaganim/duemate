@@ -18,9 +18,10 @@ DueMate is a SaaS platform that provides automated invoice reminder functionalit
 5. [Third-Party Services](#third-party-services)
 6. [Multi-Tenancy Strategy](#multi-tenancy-strategy)
 7. [Whitelabel Approach](#whitelabel-approach)
-8. [Data Flow](#data-flow)
-9. [Security Considerations](#security-considerations)
-10. [Scalability & Performance](#scalability--performance)
+8. [Customer AWS Account Deployment](#customer-aws-account-deployment)
+9. [Data Flow](#data-flow)
+10. [Security Considerations](#security-considerations)
+11. [Scalability & Performance](#scalability--performance)
 
 ---
 
@@ -937,6 +938,721 @@ s3://duemate-assets/
 
 ---
 
+## Customer AWS Account Deployment
+
+### Overview
+
+DueMate supports **deployment into customer-owned AWS accounts** for enterprise customers who require:
+- Complete infrastructure isolation and control
+- Custom domain names (e.g., `invoices.acmecorp.com`)
+- Compliance with data residency requirements
+- Direct AWS cost visibility and control
+- Full ownership of data and infrastructure
+
+This deployment model uses **Infrastructure as Code (IaC)** to automate stack provisioning, making it straightforward to deploy and maintain multiple isolated instances.
+
+### Deployment Models Comparison
+
+| Feature | SaaS Multi-Tenant | Customer AWS Account |
+|---------|-------------------|----------------------|
+| **Infrastructure** | Shared AWS account | Dedicated customer account |
+| **Data Isolation** | Logical (DynamoDB partitions) | Physical (separate account) |
+| **Domain** | Subdomain (acme.duemate.com) | Custom domain (invoices.acme.com) |
+| **Costs** | Included in subscription | Customer pays AWS directly |
+| **Updates** | Automatic | Managed via CI/CD or manual |
+| **Control** | Limited | Full administrative access |
+| **Compliance** | Shared responsibility | Customer-controlled |
+| **Best For** | SMBs, startups | Enterprises, regulated industries |
+
+### Architecture for Customer AWS Deployment
+
+The serverless architecture remains the same, but deployed entirely within the customer's AWS account:
+
+```
+Customer AWS Account: acmecorp-production
+├── Region: us-east-1 (or customer choice)
+│   ├── Lambda Functions
+│   │   ├── API handlers (invoice-*, payment-*, etc.)
+│   │   ├── Background workers (reminder-*, notification-*)
+│   │   └── Scheduled jobs (EventBridge triggers)
+│   │
+│   ├── API Gateway
+│   │   ├── REST API: api.invoices.acmecorp.com
+│   │   └── Custom domain with ACM certificate
+│   │
+│   ├── DynamoDB
+│   │   ├── Main table: acmecorp-duemate-main
+│   │   └── Backup/PITR enabled
+│   │
+│   ├── S3 Buckets
+│   │   ├── Frontend hosting: invoices.acmecorp.com
+│   │   ├── Invoice PDFs: acmecorp-duemate-invoices
+│   │   └── Assets/uploads: acmecorp-duemate-assets
+│   │
+│   ├── CloudFront Distribution
+│   │   ├── Custom domain: invoices.acmecorp.com
+│   │   └── SSL/TLS certificate (ACM)
+│   │
+│   ├── Cognito User Pool
+│   │   └── User authentication & management
+│   │
+│   ├── EventBridge Rules
+│   │   └── Scheduled reminder checks
+│   │
+│   ├── SQS Queues
+│   │   ├── Notification queue
+│   │   └── Dead letter queues
+│   │
+│   ├── Secrets Manager
+│   │   ├── Stripe API keys
+│   │   ├── Twilio credentials
+│   │   └── Third-party integrations
+│   │
+│   └── CloudWatch
+│       ├── Logs (all Lambda functions)
+│       ├── Metrics & Dashboards
+│       └── Alarms
+```
+
+### Prerequisites for Customer Deployment
+
+**Customer Requirements:**
+1. **AWS Account** with administrative access
+2. **Domain name** registered (Route53 or external registrar)
+3. **AWS CLI** configured with appropriate credentials
+4. **Third-party accounts** (optional):
+   - Stripe account for payments
+   - Twilio account for SMS (or use AWS SNS)
+   - Plaid account for banking integration
+
+**Technical Prerequisites:**
+```bash
+# Required tools
+- Node.js 20+
+- AWS CLI v2
+- Serverless Framework OR AWS SAM CLI
+- Git
+
+# Recommended tools
+- Docker (for local testing)
+- Terraform (alternative to Serverless Framework)
+```
+
+### Deployment Process
+
+#### Option 1: Automated Deployment via Serverless Framework
+
+**1. Configuration File (`serverless.yml`)**
+```yaml
+service: duemate-${self:custom.customerName}
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'production'}
+  
+  # Customer-specific environment variables
+  environment:
+    CUSTOMER_NAME: ${self:custom.customerName}
+    CUSTOM_DOMAIN: ${self:custom.customDomain}
+    TABLE_NAME: ${self:custom.tableName}
+    STAGE: ${self:provider.stage}
+
+custom:
+  # Customer-specific configuration
+  customerName: acmecorp
+  customDomain: invoices.acmecorp.com
+  tableName: ${self:custom.customerName}-duemate-main
+  
+  # Custom domain configuration
+  customDomain:
+    domainName: ${self:custom.customDomain}
+    certificateName: ${self:custom.customDomain}
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+
+resources:
+  Resources:
+    # DynamoDB Table
+    DueMateMainTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        SSESpecification:
+          SSEEnabled: true
+
+functions:
+  # API Functions
+  invoiceCreate:
+    handler: src/handlers/invoice/create.handler
+    events:
+      - http:
+          path: /invoices
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref ApiGatewayAuthorizer
+  
+  # ... (other functions)
+```
+
+**2. Deploy to Customer AWS Account**
+```bash
+# Configure AWS credentials for customer account
+export AWS_PROFILE=acmecorp-production
+
+# Deploy the stack
+serverless deploy \
+  --stage production \
+  --region us-east-1 \
+  --param="customerName=acmecorp" \
+  --param="customDomain=invoices.acmecorp.com"
+
+# Expected output:
+# ✔ Service deployed to stack duemate-acmecorp-production
+# ✔ API Gateway: https://api.invoices.acmecorp.com
+# ✔ Frontend: https://invoices.acmecorp.com
+# ✔ DynamoDB: acmecorp-duemate-main
+```
+
+#### Option 2: AWS SAM Deployment
+
+**SAM Template (`template.yaml`)**
+```yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  CustomerName:
+    Type: String
+    Default: acmecorp
+  CustomDomain:
+    Type: String
+    Default: invoices.acmecorp.com
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [production, staging]
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref DueMateMainTable
+        CUSTOMER_NAME: !Ref CustomerName
+
+Resources:
+  # API Gateway
+  DueMateApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Domain:
+        DomainName: !Sub 'api.${CustomDomain}'
+        CertificateArn: !Ref ApiCertificate
+
+  # Lambda Functions
+  InvoiceCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/
+      Handler: invoice-create.handler
+      Events:
+        CreateInvoice:
+          Type: Api
+          Properties:
+            RestApiId: !Ref DueMateApi
+            Path: /invoices
+            Method: POST
+
+  # DynamoDB Table
+  DueMateMainTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${CustomerName}-duemate-main'
+      BillingMode: PAY_PER_REQUEST
+      # ... (same as serverless config)
+
+Outputs:
+  ApiEndpoint:
+    Value: !Sub 'https://api.${CustomDomain}'
+  FrontendUrl:
+    Value: !Sub 'https://${CustomDomain}'
+  TableName:
+    Value: !Ref DueMateMainTable
+```
+
+**Deploy with SAM**
+```bash
+# Build
+sam build
+
+# Deploy
+sam deploy \
+  --stack-name duemate-acmecorp \
+  --parameter-overrides \
+    CustomerName=acmecorp \
+    CustomDomain=invoices.acmecorp.com \
+    Environment=production \
+  --capabilities CAPABILITY_IAM \
+  --region us-east-1
+```
+
+#### Option 3: Terraform Deployment (Alternative)
+
+```hcl
+# main.tf
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+variable "customer_name" {
+  default = "acmecorp"
+}
+
+variable "custom_domain" {
+  default = "invoices.acmecorp.com"
+}
+
+# DynamoDB Table
+resource "aws_dynamodb_table" "main" {
+  name           = "${var.customer_name}-duemate-main"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "PK"
+  range_key      = "SK"
+
+  attribute {
+    name = "PK"
+    type = "S"
+  }
+  
+  # ... (rest of configuration)
+}
+
+# Deploy with:
+# terraform init
+# terraform apply -var="customer_name=acmecorp"
+```
+
+### Custom Domain Configuration
+
+**Step 1: Request SSL Certificate**
+```bash
+# Using AWS Certificate Manager
+aws acm request-certificate \
+  --domain-name invoices.acmecorp.com \
+  --subject-alternative-names '*.invoices.acmecorp.com' \
+  --validation-method DNS \
+  --region us-east-1
+
+# Note: For CloudFront, certificate MUST be in us-east-1
+```
+
+**Step 2: DNS Configuration**
+
+If customer uses **Route53**:
+```bash
+# Serverless Framework automatically creates Route53 records
+# OR manually:
+aws route53 change-resource-record-sets \
+  --hosted-zone-id Z1234567890ABC \
+  --change-batch file://dns-changes.json
+```
+
+If customer uses **external DNS provider** (GoDaddy, Cloudflare, etc.):
+```
+# Add these DNS records:
+
+# Frontend (CloudFront)
+CNAME  invoices.acmecorp.com  -> d1234567890.cloudfront.net
+
+# API (API Gateway)
+CNAME  api.invoices.acmecorp.com  -> xyz123.execute-api.us-east-1.amazonaws.com
+
+# Email verification (SES - if using custom domain)
+TXT  _amazonses.acmecorp.com  -> verification-token
+MX   acmecorp.com  -> 10 inbound-smtp.us-east-1.amazonaws.com
+```
+
+**Step 3: Validate Certificate**
+```bash
+# Check certificate status
+aws acm describe-certificate \
+  --certificate-arn arn:aws:acm:us-east-1:123456789012:certificate/abc...
+
+# Once validated, certificate is ready for use
+```
+
+### Configuration File Structure
+
+**Customer-specific configuration (`config/acmecorp.json`)**
+```json
+{
+  "customerName": "acmecorp",
+  "customDomain": "invoices.acmecorp.com",
+  "awsRegion": "us-east-1",
+  "environment": "production",
+  
+  "branding": {
+    "companyName": "Acme Corporation",
+    "logoUrl": "https://invoices.acmecorp.com/assets/logo.png",
+    "primaryColor": "#0066CC",
+    "supportEmail": "support@acmecorp.com"
+  },
+  
+  "features": {
+    "smsEnabled": true,
+    "emailProvider": "ses",
+    "smsProvider": "twilio",
+    "paymentsEnabled": true,
+    "bankingIntegration": true
+  },
+  
+  "integrations": {
+    "stripe": {
+      "secretArn": "arn:aws:secretsmanager:us-east-1:123456789012:secret:acmecorp/stripe"
+    },
+    "twilio": {
+      "secretArn": "arn:aws:secretsmanager:us-east-1:123456789012:secret:acmecorp/twilio"
+    },
+    "plaid": {
+      "secretArn": "arn:aws:secretsmanager:us-east-1:123456789012:secret:acmecorp/plaid"
+    }
+  },
+  
+  "security": {
+    "mfaRequired": true,
+    "passwordMinLength": 12,
+    "sessionTimeoutMinutes": 60,
+    "ipWhitelist": []
+  },
+  
+  "notifications": {
+    "adminEmail": "admin@acmecorp.com",
+    "alertEmail": "alerts@acmecorp.com"
+  }
+}
+```
+
+### Updates and Maintenance
+
+**Option 1: Managed Updates (Recommended)**
+
+Create a CI/CD pipeline that customer controls:
+
+```yaml
+# .github/workflows/deploy-customer.yml
+name: Deploy to Customer AWS
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.CUSTOMER_AWS_ACCOUNT }}:role/DueMateDeployRole
+          aws-region: us-east-1
+      
+      - name: Deploy Stack
+        run: |
+          npm ci
+          npm run build
+          serverless deploy --stage production
+      
+      - name: Run Smoke Tests
+        run: npm run test:smoke
+```
+
+**Option 2: Manual Updates**
+
+Customer can update when ready:
+```bash
+# Pull latest version
+git pull origin main
+
+# Review changes
+git log --oneline -5
+
+# Deploy update
+serverless deploy --stage production
+
+# Rollback if needed
+serverless deploy --stage production --package .serverless-backup
+```
+
+**Option 3: Versioned Releases**
+
+Tag releases for controlled updates:
+```bash
+# List available versions
+git tag
+
+# Deploy specific version
+git checkout v1.2.0
+serverless deploy --stage production
+```
+
+### Monitoring and Observability
+
+Customer has full access to CloudWatch:
+
+```bash
+# View Lambda logs
+aws logs tail /aws/lambda/duemate-acmecorp-invoiceCreate --follow
+
+# Create custom dashboard
+aws cloudwatch put-dashboard \
+  --dashboard-name DueMate-Overview \
+  --dashboard-body file://dashboard.json
+
+# Set up alarms
+aws cloudwatch put-metric-alarm \
+  --alarm-name duemate-high-errors \
+  --alarm-description "Alert on high error rate" \
+  --metric-name Errors \
+  --namespace AWS/Lambda \
+  --statistic Sum \
+  --period 300 \
+  --threshold 10 \
+  --comparison-operator GreaterThanThreshold
+```
+
+### Cost Management
+
+Customer pays AWS directly and can:
+
+1. **Enable Cost Allocation Tags**
+```bash
+# Tag all resources
+serverless deploy --tags Project=DueMate,Customer=acmecorp,Environment=production
+```
+
+2. **Set Budget Alerts**
+```bash
+aws budgets create-budget \
+  --account-id 123456789012 \
+  --budget file://budget.json \
+  --notifications-with-subscribers file://notifications.json
+```
+
+3. **Use AWS Cost Explorer**
+- Filter by tags: `Project=DueMate`
+- View daily/monthly costs
+- Forecast future costs
+
+### Data Backup and Disaster Recovery
+
+**DynamoDB Backups:**
+```bash
+# Automated backups (PITR enabled by default)
+# Manual backup
+aws dynamodb create-backup \
+  --table-name acmecorp-duemate-main \
+  --backup-name manual-backup-$(date +%Y%m%d)
+
+# Restore from backup
+aws dynamodb restore-table-from-backup \
+  --target-table-name acmecorp-duemate-main-restored \
+  --backup-arn arn:aws:dynamodb:...
+```
+
+**S3 Versioning:**
+```bash
+# Enable versioning on invoice bucket
+aws s3api put-bucket-versioning \
+  --bucket acmecorp-duemate-invoices \
+  --versioning-configuration Status=Enabled
+```
+
+### Security Considerations
+
+**IAM Roles and Permissions:**
+- Lambda execution role with least privilege
+- API Gateway invoke permissions
+- DynamoDB read/write permissions only for specific tables
+- Secrets Manager read-only for integration credentials
+
+**Network Security:**
+- Optional: Deploy Lambda in VPC for enhanced security
+- VPC endpoints for AWS services (no internet traffic)
+- Security groups and NACLs as needed
+
+**Compliance:**
+- Customer controls data residency (AWS region choice)
+- Customer owns encryption keys (option to use customer-managed KMS keys)
+- CloudTrail enabled for audit logging
+- AWS Config for compliance monitoring
+
+### Migration from SaaS to Customer AWS
+
+If customer starts on shared SaaS and wants to migrate:
+
+**1. Export Data**
+```bash
+# Export all tenant data from shared account
+npm run export:tenant -- --tenant-id=acmecorp --output=acmecorp-export.json
+```
+
+**2. Deploy Stack in Customer Account**
+```bash
+serverless deploy --stage production
+```
+
+**3. Import Data**
+```bash
+# Import to customer's DynamoDB
+npm run import:data -- --file=acmecorp-export.json --table=acmecorp-duemate-main
+```
+
+**4. Update DNS**
+```bash
+# Point custom domain to new deployment
+# Update DNS records to new CloudFront/API Gateway endpoints
+```
+
+**5. Validate and Cutover**
+```bash
+# Run validation tests
+npm run test:migration
+
+# Monitor for 24-48 hours before decommissioning old tenant
+```
+
+### Licensing and Distribution
+
+**Licensing Models:**
+
+1. **Perpetual License**
+   - One-time fee for specific version
+   - Customer deploys and manages
+   - Updates available via annual support contract
+
+2. **Subscription License**
+   - Annual/monthly licensing fee
+   - Includes updates and support
+   - Customer still pays AWS costs directly
+
+3. **Hybrid Model**
+   - Base platform fee + usage-based fee
+   - Platform license + support
+   - Customer pays AWS directly
+
+**Code Distribution:**
+
+```bash
+# Option 1: Private GitHub repository access
+# Grant customer read access to private repo
+
+# Option 2: Packaged release
+# Provide ZIP/TAR of specific version
+
+# Option 3: Container image
+# Push to customer's ECR (if using containers)
+
+# Option 4: AWS Marketplace
+# Publish as AWS Marketplace solution (CloudFormation template)
+```
+
+### Support Model
+
+**Support Tiers:**
+
+1. **Self-Service**
+   - Documentation only
+   - Community forums
+   - Bug fixes via updates
+
+2. **Email Support**
+   - Response within 24-48 hours
+   - Deployment assistance
+   - Configuration guidance
+
+3. **Premium Support**
+   - Priority response (4-hour SLA)
+   - Dedicated Slack channel
+   - Quarterly architecture reviews
+   - Assisted deployments
+
+### Deployment Checklist
+
+**Pre-Deployment:**
+- [ ] Customer AWS account created and accessible
+- [ ] Domain name registered and accessible
+- [ ] SSL certificate requested in ACM (us-east-1)
+- [ ] Third-party API keys obtained (Stripe, Twilio, Plaid)
+- [ ] Customer configuration file created
+- [ ] IaC templates customized for customer
+
+**Deployment:**
+- [ ] Deploy infrastructure via Serverless/SAM/Terraform
+- [ ] Validate all Lambda functions deployed
+- [ ] Verify DynamoDB table created with correct schema
+- [ ] Configure custom domain with certificate
+- [ ] Update DNS records
+- [ ] Deploy frontend to S3 + CloudFront
+- [ ] Configure Cognito user pool
+- [ ] Store secrets in Secrets Manager
+- [ ] Set up EventBridge rules for scheduling
+
+**Post-Deployment:**
+- [ ] Verify SSL certificates active
+- [ ] Test all API endpoints
+- [ ] Create initial admin user
+- [ ] Configure CloudWatch alarms
+- [ ] Set up cost monitoring and budgets
+- [ ] Enable CloudTrail for audit logging
+- [ ] Create backups of DynamoDB table
+- [ ] Document customer-specific configuration
+- [ ] Provide access credentials to customer
+- [ ] Conduct deployment handoff meeting
+
+---
+
 ## Data Flow
 
 ### 1. Invoice Creation & Reminder Flow
@@ -1329,6 +2045,7 @@ To ensure profitability with these costs:
 - API access: $29/month add-on
 - White-label branding: $99/month add-on
 - Premium support: $199/month
+- **Customer AWS deployment:** One-time setup fee ($5,000-$15,000) + annual license
 
 ---
 
@@ -1375,6 +2092,7 @@ This serverless architecture provides DueMate with:
 - **Fast iteration cycles** - deploy changes in minutes via CI/CD
 - **Multi-tenancy ready** - secure isolation via DynamoDB partition keys
 - **Whitelabel support** - flexible branding via S3 and CloudFront
+- **Flexible deployment** - SaaS multi-tenant OR customer AWS accounts
 
 The chosen **serverless-first AWS stack** balances:
 - ✅ **Minimal operational overhead** (no servers to manage)
@@ -1382,8 +2100,12 @@ The chosen **serverless-first AWS stack** balances:
 - ✅ **Linear cost scaling** (costs grow proportionally with usage)
 - ✅ **Production reliability** (AWS SLAs and managed services)
 - ✅ **Developer productivity** (TypeScript, modern tooling, IaC)
+- ✅ **Deployment flexibility** (shared SaaS or dedicated customer accounts)
 
-This approach enables a **solo developer or small team** to build and launch DueMate with near-zero infrastructure costs while maintaining the ability to scale to thousands of customers without architectural changes.
+This approach enables a **solo developer or small team** to build and launch DueMate with near-zero infrastructure costs while maintaining the ability to:
+- Scale to thousands of customers in a shared SaaS model
+- Deploy dedicated instances in customer AWS accounts with custom domains
+- Support both deployment models simultaneously with the same codebase
 
 ---
 
