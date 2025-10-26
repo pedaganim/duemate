@@ -48,7 +48,7 @@ DueMate is a SaaS platform that provides automated invoice reminder functionalit
 
 ## Architecture Overview
 
-DueMate follows a **modern microservices-oriented architecture** with a monolithic core for rapid initial development, designed to evolve into full microservices as needed.
+DueMate follows a **serverless-first architecture** using AWS services to minimize operational costs and infrastructure management. This approach provides near-zero costs during low usage periods while automatically scaling to handle growth.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -57,7 +57,9 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 │                                                                  │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
 │  │   Web App    │  │  Mobile App  │  │  API Client  │          │
-│  │  (React)     │  │ (React Native│  │  (REST/GraphQL)│        │
+│  │  (React)     │  │ (React Native│  │    (REST)    │          │
+│  │  on S3 +     │  │  Expo)       │  │              │          │
+│  │  CloudFront  │  │              │  │              │          │
 │  └──────────────┘  └──────────────┘  └──────────────┘          │
 │                                                                  │
 └────────────────────────┬─────────────────────────────────────────┘
@@ -65,43 +67,50 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
                          │ HTTPS
                          │
 ┌────────────────────────▼─────────────────────────────────────────┐
-│                   API GATEWAY / LOAD BALANCER                    │
-│                     (NGINX / AWS ALB)                            │
+│                   AWS API GATEWAY (REST)                         │
+│              - Authentication (Cognito Authorizer)               │
+│              - Request validation & throttling                   │
+│              - CORS handling                                     │
 └────────────────────────┬─────────────────────────────────────────┘
                          │
-         ┌───────────────┼───────────────┐
-         │               │               │
-┌────────▼──────┐ ┌──────▼──────┐ ┌─────▼──────────┐
-│               │ │              │ │                 │
-│  Web API      │ │  Background  │ │  WebSocket     │
-│  Service      │ │  Workers     │ │  Service       │
-│  (Node.js/    │ │  (Bull Queue)│ │  (Real-time    │
-│   Express)    │ │              │ │   updates)     │
-│               │ │              │ │                 │
-└───────┬───────┘ └──────┬───────┘ └────────────────┘
+         ┌───────────────┼───────────────────────────────┐
+         │               │                               │
+         │               │                               │
+┌────────▼──────┐ ┌──────▼──────────┐ ┌────────▼────────┐
+│               │ │                  │ │                  │
+│  Lambda       │ │  Lambda          │ │  Lambda          │
+│  Functions    │ │  Functions       │ │  Functions       │
+│  (API Logic)  │ │  (Background)    │ │  (Webhooks)      │
+│               │ │                  │ │                  │
+└───────┬───────┘ └──────┬───────────┘ └──────────────────┘
         │                │
         │         ┌──────▼─────────────────────┐
-        │         │   Message Queue            │
-        │         │   (Redis / RabbitMQ)       │
+        │         │   EventBridge / SQS        │
+        │         │   (Event routing &         │
+        │         │    async processing)       │
         │         └────────────────────────────┘
         │
 ┌───────▼────────────────────────────────────────────┐
-│              APPLICATION CORE                      │
+│              AWS SERVICES CORE                     │
 ├────────────────────────────────────────────────────┤
 │                                                    │
 │  ┌──────────────┐  ┌──────────────┐              │
-│  │  Auth &      │  │  Invoice     │              │
-│  │  User Mgmt   │  │  Management  │              │
+│  │  Cognito     │  │  DynamoDB    │              │
+│  │  (Auth)      │  │  (Invoices,  │              │
+│  │              │  │   Tenants,   │              │
+│  │              │  │   Users)     │              │
 │  └──────────────┘  └──────────────┘              │
 │                                                    │
 │  ┌──────────────┐  ┌──────────────┐              │
-│  │  Reminder    │  │  Notification│              │
-│  │  Scheduler   │  │  Service     │              │
+│  │  EventBridge │  │  Step         │              │
+│  │  (Scheduler) │  │  Functions   │              │
+│  │              │  │  (Workflows) │              │
 │  └──────────────┘  └──────────────┘              │
 │                                                    │
 │  ┌──────────────┐  ┌──────────────┐              │
-│  │  Payment     │  │  Analytics & │              │
-│  │  Processing  │  │  Reporting   │              │
+│  │  SQS/SNS     │  │  CloudWatch  │              │
+│  │  (Queues)    │  │  (Logs/      │              │
+│  │              │  │   Metrics)   │              │
 │  └──────────────┘  └──────────────┘              │
 │                                                    │
 └────────────────────┬───────────────────────────────┘
@@ -110,9 +119,10 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
          │           │               │
 ┌────────▼───┐ ┌─────▼──────┐ ┌──────▼────────┐
 │            │ │            │ │               │
-│ PostgreSQL │ │   Redis    │ │  File Storage │
-│ (Primary)  │ │  (Cache)   │ │  (S3/MinIO)   │
-│            │ │            │ │               │
+│ DynamoDB   │ │  S3        │ │  DAX          │
+│ Tables     │ │  (Files,   │ │  (DynamoDB    │
+│            │ │   Assets)  │ │   Cache)      │
+│            │ │            │ │  *Optional    │
 └────────────┘ └────────────┘ └───────────────┘
          │
          │
@@ -121,11 +131,27 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 ├───────────────────────────────────────────────────┤
 │                                                   │
 │  Email       SMS        Payment     Banking      │
-│  (SendGrid)  (Twilio)   (Stripe)    (Plaid)      │
-│                         (PayPal)    (Yodlee)     │
+│  (SES/       (SNS/      (Stripe)    (Plaid)      │
+│   SendGrid)  Twilio)    (PayPal)                 │
 │                                                   │
 └───────────────────────────────────────────────────┘
 ```
+
+### Cost Optimization Strategy
+
+**AWS Free Tier Benefits:**
+- Lambda: 1M free requests/month + 400,000 GB-seconds compute
+- DynamoDB: 25 GB storage + 25 read/write capacity units
+- API Gateway: 1M API calls/month (first 12 months)
+- S3: 5 GB storage + 20,000 GET requests
+- CloudFront: 1 TB data transfer out (first 12 months)
+- SES: 62,000 emails/month (when sending from EC2/Lambda)
+- SNS: 1M publishes + 100,000 HTTP deliveries
+
+**Estimated Monthly Costs (Beyond Free Tier):**
+- **Low usage (< 100 invoices/month):** $0-5/month
+- **Medium usage (1,000 invoices/month):** $10-30/month
+- **High usage (10,000 invoices/month):** $50-150/month
 
 ---
 
@@ -155,89 +181,129 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 
 ### Backend
 
-**Primary Stack**
-- **Runtime:** Node.js 20 LTS
-- **Framework:** Express.js / NestJS
+**Serverless Stack (AWS Lambda)**
+- **Runtime:** Node.js 20 (AWS Lambda runtime)
+- **Framework:** Serverless Framework / AWS SAM / CDK
 - **Language:** TypeScript
-- **API Style:** RESTful API + GraphQL (optional for complex queries)
-- **Authentication:** JWT + Passport.js
-- **Validation:** Joi / Zod
-- **ORM:** Prisma / TypeORM
-- **Testing:** Jest + Supertest
+- **API Style:** RESTful API via API Gateway
+- **Authentication:** AWS Cognito (user pools) + JWT
+- **Validation:** Zod (lightweight for Lambda)
+- **Data Access:** AWS DynamoDB SDK / DynamoDB Toolbox
+- **Testing:** Jest + AWS SAM Local
 
 **Background Processing**
-- **Queue System:** Bull / BullMQ (Redis-backed)
-- **Scheduler:** node-cron / Agenda
-- **Email Processing:** Dedicated worker processes
-- **SMS Processing:** Dedicated worker processes
+- **Event System:** Amazon EventBridge (scheduled events)
+- **Queue System:** Amazon SQS (dead letter queues for retries)
+- **Workflow Orchestration:** AWS Step Functions (complex workflows)
+- **Scheduler:** EventBridge Scheduler (cron-like scheduling)
 
 **Reasoning:**
-- Node.js provides excellent performance for I/O-heavy operations
-- TypeScript across frontend and backend enables code sharing
-- Express/NestJS are battle-tested and scalable
-- Prisma offers type-safe database access
-- Bull provides reliable job processing with retries
+- **Pay-per-use:** Only charged for actual execution time (no idle costs)
+- **Auto-scaling:** Scales automatically from 0 to thousands of concurrent executions
+- **Free tier:** 1M Lambda requests/month permanently free
+- **TypeScript:** Enables code sharing with frontend
+- **Managed services:** No server maintenance or patching required
+- **Cold start mitigation:** Keep functions warm with EventBridge pings if needed
 
 ### Database
 
-**Primary Database**
-- **System:** PostgreSQL 15+
-- **Hosting:** AWS RDS / Google Cloud SQL / Managed PostgreSQL
+**Primary Database: Amazon DynamoDB**
+- **Type:** NoSQL, Key-Value and Document database
+- **Billing Mode:** On-Demand (pay per request) or Provisioned (with auto-scaling)
+- **Free Tier:** 25 GB storage + 25 RCU/WCU permanently
 - **Features Used:**
-  - JSONB for flexible schema fields
-  - Row-level security for multi-tenancy
-  - Full-text search
-  - Partitioning for large tables (invoices, logs)
+  - Single-table design for cost optimization
+  - Global Secondary Indexes (GSI) for query patterns
+  - DynamoDB Streams for change data capture
+  - Time-to-Live (TTL) for automatic data expiration
+  - Point-in-time recovery for backups
 
-**Caching Layer**
-- **System:** Redis 7+
-- **Use Cases:**
-  - Session storage
-  - API response caching
-  - Rate limiting
-  - Job queue backend
-  - Real-time features (pub/sub)
+**Table Design Strategy:**
+```
+Primary Table: duemate-main
+
+PK (Partition Key)         SK (Sort Key)              Attributes
+─────────────────────────────────────────────────────────────────
+TENANT#{tenantId}          METADATA                   name, plan, settings, branding
+TENANT#{tenantId}          USER#{userId}              email, role, permissions
+TENANT#{tenantId}          INVOICE#{invoiceId}        amount, dueDate, status, customerId
+TENANT#{tenantId}          CUSTOMER#{customerId}      name, email, phone
+TENANT#{tenantId}          REMINDER#{reminderId}      invoiceId, scheduledAt, status, type
+
+GSI-1: Query invoices by status
+GSI1PK: TENANT#{tenantId}#STATUS#{status}
+GSI1SK: INVOICE#{invoiceId}
+
+GSI-2: Query reminders by scheduled date
+GSI2PK: TENANT#{tenantId}#DATE#{YYYY-MM-DD}
+GSI2SK: REMINDER#{reminderId}
+```
+
+**Caching Layer (Optional)**
+- **System:** Amazon DynamoDB Accelerator (DAX)
+- **Use Cases:** Ultra-low latency reads (microseconds)
+- **Cost:** Only enable when needed for high-traffic scenarios
 
 **Reasoning:**
-- PostgreSQL offers excellent reliability, ACID compliance, and advanced features
-- JSONB enables flexible configuration per tenant
-- Redis provides high-performance caching and job queuing
-- Both have excellent Node.js support
+- **Cost-effective:** Pay only for reads/writes, 25GB free tier
+- **Serverless:** No server management, automatic scaling
+- **Performance:** Single-digit millisecond latency
+- **Global tables:** Built-in multi-region replication if needed
+- **No cold starts:** Always available, unlike RDS
+- **Single-table design:** Minimize costs by reducing table count
 
 ### File Storage
 
-**System:** AWS S3 / Google Cloud Storage / MinIO (self-hosted)
-**Use Cases:**
-- Invoice PDF storage
-- Email attachments
-- Report exports
-- Logo/branding assets for whitelabel
+**System:** AWS S3
+- **Storage Classes:** S3 Standard (frequently accessed), S3 Standard-IA (archival)
+- **Free Tier:** 5 GB storage + 20,000 GET requests/month (first 12 months)
+- **Use Cases:**
+  - Invoice PDF storage
+  - Email attachments
+  - Report exports
+  - Logo/branding assets for whitelabel
+  - Static website hosting (frontend)
+
+**Content Delivery**
+- **CDN:** Amazon CloudFront
+- **Free Tier:** 1 TB data transfer out (first 12 months)
+- **Benefits:** Fast global delivery, DDoS protection, SSL/TLS
 
 ### Infrastructure & DevOps
 
-**Containerization**
-- **Container Runtime:** Docker
-- **Orchestration:** Kubernetes (production) / Docker Compose (development)
+**Infrastructure as Code**
+- **Primary Tool:** AWS CDK (TypeScript) or Serverless Framework
+- **Alternative:** AWS SAM, Terraform
+- **Benefits:** Version-controlled infrastructure, reproducible deployments
 
 **CI/CD**
-- **Platform:** GitHub Actions / GitLab CI
-- **Stages:** Lint → Test → Build → Deploy
+- **Platform:** GitHub Actions (free for public repos, 2,000 minutes/month for private)
+- **Stages:** 
+  - Lint & Type Check
+  - Unit Tests
+  - Build Lambda packages
+  - Deploy to staging (on PR)
+  - Deploy to production (on merge to main)
 
-**Hosting Options**
-- **Cloud Providers:** AWS / Google Cloud Platform / DigitalOcean
-- **Managed Kubernetes:** EKS / GKE / DOKS
-- **Serverless Option:** AWS Lambda + API Gateway (alternative approach)
+**Hosting**
+- **Frontend:** S3 + CloudFront (static site)
+- **Backend:** AWS Lambda (serverless functions)
+- **Database:** DynamoDB (fully managed)
+- **Total Infrastructure Cost at Low Scale:** Near $0 with free tiers
 
 **Monitoring & Logging**
-- **APM:** New Relic / Datadog / Grafana
-- **Logging:** Winston + ELK Stack (Elasticsearch, Logstash, Kibana)
-- **Error Tracking:** Sentry
+- **Logging:** CloudWatch Logs (automatic for Lambda)
+- **Metrics:** CloudWatch Metrics (automatic for Lambda, API Gateway, DynamoDB)
+- **Alarms:** CloudWatch Alarms (free tier: 10 alarms)
+- **Tracing:** AWS X-Ray (optional, for debugging)
+- **Error Tracking:** CloudWatch Insights or Sentry (free tier available)
 
 **Reasoning:**
-- Docker ensures consistent environments
-- Kubernetes provides scalability and self-healing
-- GitHub Actions integrates seamlessly with our workflow
-- Comprehensive monitoring ensures reliability
+- **Cost optimization:** Serverless means no idle costs
+- **Minimal operations:** Managed services reduce DevOps overhead
+- **Generous free tiers:** Keep costs near zero during early stages
+- **Production-ready:** AWS services are enterprise-grade
+- **Quick deployment:** Serverless Framework enables rapid iteration
 
 ---
 
@@ -253,11 +319,17 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Session management
 - API key management for integrations
 
-**Technology:**
-- JWT for stateless authentication
-- Passport.js for strategy management
-- bcrypt for password hashing
-- Redis for session storage
+**Implementation:**
+- **AWS Cognito User Pools:** Managed user directory with built-in auth
+- **Cognito Identity Pools:** Federated identities for third-party auth
+- **Lambda Authorizers:** Custom authorization logic for API Gateway
+- **JWT tokens:** Issued by Cognito, validated by API Gateway
+
+**Lambda Functions:**
+- `auth-signup`: Handle user registration with custom validations
+- `auth-confirm`: Email/SMS confirmation handling
+- `auth-login`: Custom login flows if needed (Cognito handles most)
+- `auth-refresh`: Token refresh logic
 
 ### 2. Invoice Management Service
 
@@ -269,9 +341,19 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Invoice status tracking
 - Custom fields per tenant
 
-**Technology:**
-- PostgreSQL for data storage
-- Puppeteer/PDFKit for PDF generation
+**Implementation:**
+- **DynamoDB table:** Store invoice data with tenant isolation
+- **S3:** Store generated PDF files
+- **Lambda Layer:** Shared PDF generation library
+
+**Lambda Functions:**
+- `invoice-create`: Create new invoices
+- `invoice-get`: Retrieve invoice details
+- `invoice-update`: Update invoice information
+- `invoice-delete`: Soft delete invoices
+- `invoice-list`: List invoices with filtering/pagination
+- `invoice-generate-pdf`: Generate PDF using Puppeteer or PDFKit
+- `invoice-import`: Process bulk CSV/Excel uploads from S3
 - CSV/Excel parsers for import
 
 ### 3. Reminder Scheduler Service
@@ -283,10 +365,22 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Manage reminder templates
 - Track reminder delivery status
 
-**Technology:**
-- node-cron for scheduling
-- Bull queue for reliable execution
-- Template engine (Handlebars/EJS)
+**Implementation:**
+- **EventBridge Scheduler:** Cron-based rule execution (replaces node-cron)
+- **DynamoDB:** Store reminder configurations and schedules
+- **SQS:** Queue reminder tasks for processing
+- **Template storage:** S3 or DynamoDB for Handlebars/EJS templates
+
+**Lambda Functions:**
+- `reminder-schedule`: Calculate and create reminder schedules when invoice created
+- `reminder-process`: Triggered by EventBridge to check due reminders
+- `reminder-send`: Dequeue from SQS and send notifications
+- `reminder-template-manage`: CRUD for reminder templates
+
+**EventBridge Rules:**
+- Daily cron: Check for reminders due today
+- Hourly cron: Process urgent reminders
+- DynamoDB Streams: Update schedules when invoices change
 
 ### 4. Notification Service
 
@@ -297,10 +391,17 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Retry logic for failed deliveries
 - Unsubscribe management
 
-**Technology:**
-- Bull queue for async processing
-- Third-party service integrations
-- Template engine for customization
+**Implementation:**
+- **Amazon SES:** Email sending (62,000 emails/month free from Lambda)
+- **Amazon SNS:** SMS sending (or Twilio for better deliverability)
+- **SQS with DLQ:** Retry failed deliveries with dead letter queue
+- **DynamoDB:** Track delivery status and unsubscribe lists
+
+**Lambda Functions:**
+- `notification-send-email`: Render template and send via SES
+- `notification-send-sms`: Send SMS via SNS or Twilio
+- `notification-webhook`: Handle delivery status webhooks
+- `notification-retry`: Process messages from DLQ
 
 ### 5. Payment Processing Service
 
@@ -312,10 +413,18 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Invoice-payment reconciliation
 - Refund processing
 
-**Technology:**
-- Stripe SDK / PayPal SDK
-- Webhook signature verification
-- Idempotency handling
+**Implementation:**
+- **Stripe/PayPal SDK:** Payment processing
+- **API Gateway:** Dedicated webhook endpoint with validation
+- **DynamoDB:** Store payment records and link to invoices
+- **Secrets Manager:** Store API keys securely
+
+**Lambda Functions:**
+- `payment-create-link`: Generate Stripe/PayPal payment link
+- `payment-webhook-stripe`: Handle Stripe webhooks
+- `payment-webhook-paypal`: Handle PayPal webhooks
+- `payment-reconcile`: Match payments to invoices
+- `payment-refund`: Process refund requests
 
 ### 6. Banking Integration Service
 
@@ -326,10 +435,18 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Balance checking
 - Automated reconciliation
 
-**Technology:**
-- Plaid API / Yodlee API
-- Secure credential storage
-- Transaction matching algorithms
+**Implementation:**
+- **Plaid API:** Bank connectivity
+- **Secrets Manager:** Secure storage of bank tokens
+- **DynamoDB:** Store transaction data
+- **EventBridge:** Schedule daily transaction syncs
+
+**Lambda Functions:**
+- `banking-connect`: Initialize Plaid Link flow
+- `banking-exchange-token`: Exchange public token for access token
+- `banking-sync-transactions`: Fetch new transactions daily
+- `banking-match-payments`: Auto-match transactions to invoices
+- `banking-webhook`: Handle Plaid webhooks
 
 ### 7. Analytics & Reporting Service
 
@@ -340,10 +457,17 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Scheduled reports
 - Payment trends and forecasting
 
-**Technology:**
-- PostgreSQL aggregations
-- Redis for caching
-- Chart libraries for visualization
+**Implementation:**
+- **DynamoDB:** Query and aggregate data using GSIs
+- **S3:** Store generated report files
+- **QuickSight (optional):** BI dashboards for enterprise customers
+- **CloudWatch Logs Insights:** Query logs for analytics
+
+**Lambda Functions:**
+- `analytics-dashboard`: Calculate and return KPIs
+- `analytics-generate-report`: Create custom reports (CSV, PDF)
+- `analytics-schedule-report`: EventBridge-triggered scheduled reports
+- `analytics-export-data`: Bulk export to S3
 
 ### 8. Tenant Management Service
 
@@ -354,9 +478,16 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Feature flags per tenant
 - Billing and invoicing for the platform
 
-**Technology:**
-- PostgreSQL with tenant isolation
-- Feature flag service (LaunchDarkly / custom)
+**Implementation:**
+- **DynamoDB:** Store tenant configuration and usage metrics
+- **Parameter Store/Secrets Manager:** Store feature flags
+- **CloudWatch Metrics:** Track usage for billing
+
+**Lambda Functions:**
+- `tenant-create`: Provision new tenant
+- `tenant-update`: Update tenant settings
+- `tenant-get-usage`: Calculate current usage against limits
+- `tenant-check-limit`: Validate operations against limits
 
 ### 9. Customer Portal
 
@@ -367,10 +498,15 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 - Notification preferences
 - Receipt download
 
-**Technology:**
-- Separate React application
-- Public API endpoints
-- Optimized for mobile
+**Implementation:**
+- **React SPA:** Hosted on S3 + CloudFront
+- **API Gateway:** Public endpoints (no auth required for viewing with token)
+- **Cognito:** Optional customer accounts for recurring customers
+
+**Lambda Functions:**
+- `customer-view-invoice`: Retrieve invoice by secure token
+- `customer-payment-history`: Get payment records
+- `customer-update-preferences`: Manage notification settings
 
 ---
 
@@ -378,39 +514,44 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 
 ### Email Service
 
-**Primary Provider:** SendGrid
-**Alternatives:** Amazon SES, Mailgun, Postmark
+**Primary Provider:** Amazon SES
+**Alternative:** SendGrid (if SES limits are restrictive)
 
 **Features:**
 - Transactional email delivery
-- Template management
-- Deliverability analytics
-- Webhook notifications
-- High volume sending
+- 62,000 emails/month free when sending from Lambda/EC2
+- Template management via SES templates
+- Bounce and complaint handling via SNS
+- High deliverability rates
+
+**Cost Comparison:**
+- **SES:** $0.10 per 1,000 emails (after free tier)
+- **SendGrid:** Free tier 100 emails/day, then $19.95/month for 50,000
 
 **Reasoning:**
-- SendGrid offers excellent deliverability rates
-- Robust API and SDK support
-- Template editor and version control
-- Detailed analytics
+- SES is the most cost-effective option for AWS infrastructure
+- Native integration with Lambda and SNS
+- Generous free tier aligned with serverless strategy
+- SendGrid as fallback for advanced template editor if needed
 
 ### SMS Service
 
-**Primary Provider:** Twilio
-**Alternatives:** Vonage (Nexmo), Plivo, AWS SNS
+**Primary Provider:** Amazon SNS
+**Alternative:** Twilio (for better deliverability and advanced features)
 
 **Features:**
-- Global SMS delivery
-- Programmable messaging
-- Delivery receipts
-- Two-way messaging (optional)
-- Phone number verification
+- **SNS:** Simple SMS delivery, pay per message
+- **Twilio:** Programmable messaging, delivery receipts, two-way messaging
+
+**Cost Comparison:**
+- **SNS:** $0.00645 per SMS (US), varies by country
+- **Twilio:** $0.0079 per SMS (US), includes delivery tracking
 
 **Reasoning:**
-- Twilio is industry-leading for SMS
-- Excellent documentation and SDKs
-- Reliable delivery worldwide
-- Competitive pricing
+- SNS for basic SMS needs at lowest cost
+- Twilio for production use when delivery confirmation is critical
+- Both integrate easily with Lambda
+- Can switch between providers based on tenant preferences
 
 ### Payment Gateway
 
@@ -467,45 +608,84 @@ DueMate follows a **modern microservices-oriented architecture** with a monolith
 
 ## Multi-Tenancy Strategy
 
-### Approach: Hybrid Multi-Tenancy
+### Approach: Single-Table Design in DynamoDB
 
-We will implement a **shared database with logical separation** approach:
+We will implement a **serverless multi-tenancy** approach using DynamoDB's single-table design pattern for cost optimization and performance.
 
 #### Database Architecture
 
 **Tenant Isolation Strategy:**
-```sql
--- Every table includes tenant_id for data isolation
-CREATE TABLE invoices (
-  id UUID PRIMARY KEY,
-  tenant_id UUID NOT NULL REFERENCES tenants(id),
-  customer_id UUID NOT NULL,
-  amount DECIMAL(10,2),
-  due_date DATE,
-  status VARCHAR(50),
-  created_at TIMESTAMP DEFAULT NOW(),
-  
-  -- Ensure tenant isolation at DB level
-  CONSTRAINT fk_tenant FOREIGN KEY (tenant_id) 
-    REFERENCES tenants(id) ON DELETE CASCADE
-);
+```typescript
+// DynamoDB Single Table Design
+// Every item includes tenant_id in the partition key for complete isolation
 
--- Index for performance
-CREATE INDEX idx_invoices_tenant_id ON invoices(tenant_id);
+// Example item structures:
+{
+  PK: "TENANT#acme-corp-123",
+  SK: "METADATA",
+  name: "Acme Corporation",
+  subdomain: "acme",
+  plan: "professional",
+  // ... tenant configuration
+}
 
--- Row-level security (PostgreSQL)
-ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+{
+  PK: "TENANT#acme-corp-123",
+  SK: "INVOICE#inv-456",
+  invoiceId: "inv-456",
+  customerId: "cust-789",
+  amount: 1500.00,
+  dueDate: "2025-11-15",
+  status: "pending",
+  // ... invoice data
+}
 
-CREATE POLICY tenant_isolation_policy ON invoices
-  USING (tenant_id = current_setting('app.current_tenant')::UUID);
+{
+  PK: "TENANT#acme-corp-123",
+  SK: "USER#user-101",
+  userId: "user-101",
+  email: "john@acme.com",
+  role: "admin",
+  // ... user data
+}
 ```
+
+**Access Patterns:**
+```typescript
+// 1. Get tenant configuration
+PK = "TENANT#{tenantId}" AND SK = "METADATA"
+
+// 2. List all invoices for a tenant
+PK = "TENANT#{tenantId}" AND SK begins_with "INVOICE#"
+
+// 3. Get specific invoice
+PK = "TENANT#{tenantId}" AND SK = "INVOICE#{invoiceId}"
+
+// 4. Query invoices by status (using GSI)
+GSI1PK = "TENANT#{tenantId}#STATUS#{status}"
+GSI1SK = "INVOICE#{invoiceId}"
+
+// 5. Query reminders by date (using GSI)
+GSI2PK = "TENANT#{tenantId}#DATE#{YYYY-MM-DD}"
+GSI2SK = "REMINDER#{reminderId}"
+```
+
+**Data Isolation Benefits:**
+- **Complete Isolation:** Partition key includes tenant ID - impossible to access another tenant's data
+- **Cost Efficient:** Single table = one set of RCU/WCU charges
+- **Performance:** All tenant data co-located in same partition
+- **Backup:** Single table to backup and restore
 
 #### Tenant Configuration
 
 Each tenant has:
 ```typescript
 interface Tenant {
-  id: string;
+  // Primary identifiers (stored in DynamoDB)
+  PK: string; // "TENANT#{tenantId}"
+  SK: string; // "METADATA"
+  
+  id: string; // Tenant UUID
   name: string;
   subdomain: string; // e.g., acme.duemate.com
   customDomain?: string; // e.g., invoices.acme.com
@@ -519,6 +699,15 @@ interface Tenant {
     maxMonthlySMS: number;
   };
   
+  // Current usage (updated by Lambda functions)
+  usage: {
+    invoiceCount: number;
+    userCount: number;
+    emailsSentThisMonth: number;
+    smsSentThisMonth: number;
+    lastResetDate: string; // ISO date
+  };
+  
   // Features
   features: {
     smsEnabled: boolean;
@@ -530,10 +719,10 @@ interface Tenant {
   
   // Branding (for whitelabel)
   branding: {
-    logoUrl?: string;
+    logoUrl?: string; // S3 URL
     primaryColor?: string;
     secondaryColor?: string;
-    customCSS?: string;
+    customCSS?: string; // S3 URL or inline
   };
   
   // Settings
@@ -545,16 +734,16 @@ interface Tenant {
     emailFromName: string;
   };
   
-  // Integration credentials (encrypted)
+  // Integration credentials (store ARNs to Secrets Manager)
   integrations: {
-    stripeAccountId?: string;
-    twilioAccountSid?: string;
-    customSMTPSettings?: object;
+    stripeSecretArn?: string;
+    twilioSecretArn?: string;
+    plaidSecretArn?: string;
   };
   
   status: 'active' | 'suspended' | 'cancelled';
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
 }
 ```
 
@@ -562,50 +751,64 @@ interface Tenant {
 
 **Request Flow:**
 1. Client sends request to `acme.duemate.com` or with header `X-Tenant-ID`
-2. Middleware extracts tenant identifier (subdomain or header)
-3. Middleware loads tenant configuration from cache/database
-4. Middleware sets tenant context for request
-5. All database queries automatically filter by tenant_id
+2. API Gateway extracts tenant identifier from custom domain or header
+3. Lambda authorizer or function code loads tenant from DynamoDB
+4. All subsequent operations automatically scoped to tenant
 
 **Implementation:**
 ```typescript
-// Express middleware
-async function tenantMiddleware(req, res, next) {
+// Lambda function middleware for tenant context
+export async function withTenantContext(event: APIGatewayEvent) {
   // Extract tenant from subdomain or header
-  const subdomain = extractSubdomain(req.hostname);
-  const tenantId = req.headers['x-tenant-id'];
+  const subdomain = extractSubdomain(event.headers.Host);
+  const tenantId = event.headers['x-tenant-id'];
   
-  // Load tenant (with caching)
-  const tenant = await getTenant(subdomain || tenantId);
+  // Load tenant from DynamoDB (with caching via DAX if needed)
+  const tenant = await getTenantBySubdomain(subdomain || tenantId);
   
   if (!tenant || tenant.status !== 'active') {
-    return res.status(403).json({ error: 'Invalid or inactive tenant' });
+    return {
+      statusCode: 403,
+      body: JSON.stringify({ error: 'Invalid or inactive tenant' })
+    };
   }
   
-  // Set tenant context
-  req.tenant = tenant;
+  // Check usage limits before processing
+  await validateUsageLimits(tenant);
   
-  // Set PostgreSQL session variable for RLS
-  await db.query('SET app.current_tenant = $1', [tenant.id]);
+  return tenant;
+}
+
+// DynamoDB query with partition key ensures isolation
+async function getInvoicesForTenant(tenantId: string) {
+  const params = {
+    TableName: 'duemate-main',
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: {
+      ':pk': `TENANT#${tenantId}`,
+      ':sk': 'INVOICE#'
+    }
+  };
   
-  next();
+  return dynamodb.query(params);
 }
 ```
 
 #### Data Isolation Benefits
 
-- **Shared Infrastructure:** Lower operational costs
-- **Logical Isolation:** Strong data separation
-- **Row-Level Security:** Database-enforced isolation
-- **Scalability:** Easy to add new tenants
-- **Performance:** Efficient resource utilization
+- **Partition-Level Isolation:** Each tenant's data in separate partition key
+- **No Cross-Tenant Queries:** DynamoDB requires partition key, making accidents impossible
+- **Cost Efficient:** Single table with on-demand pricing
+- **Scalability:** DynamoDB auto-scales per partition
+- **Performance:** Sub-10ms reads with proper key design
 
-#### Migration Path to Physical Isolation
+#### Migration Path for Enterprise Customers
 
-For enterprise customers requiring dedicated infrastructure:
-- Database sharding by tenant
-- Dedicated database instance per enterprise tenant
-- Separate application instances if needed
+For customers requiring dedicated infrastructure:
+- **Dedicated DynamoDB table:** Separate table per enterprise tenant
+- **Dedicated AWS account:** Full isolation at AWS account level
+- **VPC endpoints:** Private networking for maximum security
+- **Reserved capacity:** Provisioned throughput for predictable performance
 
 ---
 
@@ -953,100 +1156,234 @@ s3://duemate-assets/
 
 ## Scalability & Performance
 
-### Horizontal Scaling Strategy
+### Serverless Scaling Strategy
 
-**Application Tier:**
-- Stateless API servers
-- Load balancer distributes traffic
-- Auto-scaling based on CPU/memory metrics
-- Kubernetes Horizontal Pod Autoscaler
+**Automatic Scaling:**
+- **Lambda:** Scales from 0 to 1,000+ concurrent executions automatically
+- **DynamoDB:** On-demand mode auto-scales based on traffic
+- **API Gateway:** Handles 10,000 requests/second by default
+- **S3 & CloudFront:** Virtually unlimited scale
 
-**Background Workers:**
-- Multiple worker instances
-- Job distribution via Bull queue
-- Scale workers independently from API
-
-**Database Tier:**
-- Read replicas for read-heavy operations
-- Connection pooling (PgBouncer)
-- Query optimization and indexing
-- Partitioning for large tables (invoices, logs)
+**No Traditional Scaling Concerns:**
+- No server provisioning or capacity planning
+- No load balancer configuration
+- No connection pool management
+- No horizontal/vertical scaling decisions
 
 ### Caching Strategy
 
-**Redis Cache Layers:**
-- **L1:** Tenant configuration (1 hour TTL)
-- **L2:** Frequently accessed invoices (15 min TTL)
-- **L3:** API responses (5 min TTL)
-- **L4:** User sessions
+**API Gateway Caching (Optional):**
+- Enable for GET endpoints with predictable responses
+- Reduces Lambda invocations and costs
+- TTL: 5-60 minutes based on data volatility
 
-**Cache Invalidation:**
-- Event-driven invalidation on data updates
-- TTL-based expiration for safety
+**DynamoDB DAX (Optional for High Traffic):**
+- In-memory cache for DynamoDB
+- Microsecond latency for reads
+- Only enable when consistently > 1M requests/day
+- Cost: ~$0.12/hour for smallest node
+
+**CloudFront Caching:**
+- Cache static assets (frontend, images, PDFs)
+- Edge location caching reduces S3 costs
+- Automatic cache invalidation on deployment
 
 ### Performance Targets
 
-- **API Response Time:** <200ms for 95th percentile
-- **Page Load Time:** <2 seconds for initial load
+- **API Response Time:** <300ms for 95th percentile (includes cold starts)
+- **Cold Start Time:** <1s for Node.js Lambda (optimized with esbuild)
+- **Warm Invocation:** <100ms for business logic
+- **DynamoDB Read:** <10ms single-item get
+- **DynamoDB Query:** <50ms for paginated results
 - **Email Delivery:** Within 5 minutes of scheduled time
 - **SMS Delivery:** Within 2 minutes of scheduled time
-- **Database Queries:** <50ms for standard operations
-- **Uptime:** 99.9% SLA (8.76 hours downtime/year max)
+- **Uptime:** 99.9% SLA (leveraging AWS managed services)
+
+### Cold Start Mitigation
+
+**Strategies:**
+- Use Node.js (fastest cold start runtime)
+- Bundle with esbuild for smaller packages (<1MB)
+- Provisioned concurrency for critical functions (costs $$$, use sparingly)
+- EventBridge scheduled pings to keep warm (optional)
+- Minimize dependencies in Lambda functions
 
 ### Monitoring & Optimization
 
-**Key Metrics:**
-- Request throughput and latency
-- Database connection pool usage
-- Queue depth and processing time
-- Cache hit ratio
-- Error rates
-- User session duration
+**CloudWatch Metrics (Automatic):**
+- Lambda: Invocations, Duration, Errors, Throttles, Cold Starts
+- DynamoDB: Read/Write capacity, Throttled requests, Latency
+- API Gateway: Request count, Latency, 4xx/5xx errors
+- SQS: Messages sent, received, deleted, queue depth
 
-**Alerts:**
-- High error rates (>1%)
-- Slow API responses (>1s)
-- Queue backlog (>1000 jobs)
-- Database connection exhaustion
-- Low disk space
-- SSL certificate expiration
+**CloudWatch Alarms (Free Tier: 10 alarms):**
+- Lambda error rate > 1%
+- API Gateway 5xx errors > 5%
+- DynamoDB throttled requests > 0
+- SQS queue depth > 100 messages
+- Lambda concurrent executions > 80% of limit
+
+**Cost Monitoring:**
+- AWS Cost Explorer for daily cost tracking
+- Budget alerts for monthly spending thresholds
+- Tag resources by tenant for cost allocation
+
+### Cost Optimization Strategies
+
+1. **Right-size Lambda memory:** Start at 512MB, optimize based on metrics
+2. **Use on-demand DynamoDB:** Pay per request vs. provisioned capacity
+3. **S3 Intelligent-Tiering:** Automatic cost optimization for file storage
+4. **CloudFront compression:** Reduce data transfer costs
+5. **SES over SendGrid:** 62,000 free emails/month
+6. **SNS over Twilio:** Lower SMS costs for basic delivery
+7. **Reserved capacity:** Only for proven consistent workloads
+
+---
+
+## Cost Breakdown & Projections
+
+### Monthly Cost Estimates (USD)
+
+#### Scenario 1: Startup Phase (1-10 tenants, ~100 invoices/month)
+
+| Service | Usage | Cost |
+|---------|-------|------|
+| **Lambda** | 50,000 requests, 100ms avg, 512MB | $0 (free tier) |
+| **API Gateway** | 50,000 API calls | $0 (free tier 1st year) |
+| **DynamoDB** | 5GB storage, 100K reads, 50K writes | $0 (free tier) |
+| **S3** | 2GB storage, 10K requests | $0 (free tier 1st year) |
+| **CloudFront** | 10GB data transfer | $0 (free tier 1st year) |
+| **SES** | 5,000 emails | $0 (free tier) |
+| **SNS SMS** | 100 SMS (US) | $0.65 |
+| **Cognito** | 500 MAU | $0 (free tier) |
+| **EventBridge** | 1M events | $0 (free tier) |
+| **CloudWatch Logs** | 2GB ingested | $0.50 |
+| **Secrets Manager** | 3 secrets | $1.20 |
+| **Route53** | 1 hosted zone | $0.50 |
+| **TOTAL** | | **~$3/month** |
+
+#### Scenario 2: Growth Phase (50 tenants, ~1,000 invoices/month)
+
+| Service | Usage | Cost |
+|---------|-------|------|
+| **Lambda** | 500K requests, 100ms avg, 512MB | $0.83 |
+| **API Gateway** | 500K API calls | $1.75 |
+| **DynamoDB** | 15GB storage, 1M reads, 500K writes | $3.75 |
+| **S3** | 20GB storage, 100K requests | $0.85 |
+| **CloudFront** | 100GB data transfer | $8.50 |
+| **SES** | 50,000 emails | $5.00 |
+| **SNS SMS** | 1,000 SMS (US) | $6.45 |
+| **Cognito** | 5,000 MAU | $13.75 |
+| **EventBridge** | 10M events | $1.00 |
+| **CloudWatch** | 15GB logs, alarms | $7.50 |
+| **Secrets Manager** | 5 secrets | $2.00 |
+| **Route53** | 2 hosted zones | $1.00 |
+| **TOTAL** | | **~$52/month** |
+
+#### Scenario 3: Scale Phase (500 tenants, ~10,000 invoices/month)
+
+| Service | Usage | Cost |
+|---------|-------|------|
+| **Lambda** | 5M requests, 100ms avg, 512MB | $8.33 |
+| **API Gateway** | 5M API calls | $17.50 |
+| **DynamoDB** | 100GB storage, 10M reads, 5M writes | $33.00 |
+| **S3** | 200GB storage, 1M requests | $6.60 |
+| **CloudFront** | 1TB data transfer | $85.00 |
+| **SES** | 500,000 emails | $50.00 |
+| **SNS SMS** | 10,000 SMS (US) | $64.50 |
+| **Cognito** | 50,000 MAU | $275.00 |
+| **EventBridge** | 100M events | $10.00 |
+| **CloudWatch** | 100GB logs, monitoring | $51.00 |
+| **Secrets Manager** | 10 secrets | $4.00 |
+| **Route53** | 5 hosted zones | $2.50 |
+| **TOTAL** | | **~$607/month** |
+
+### Cost Optimization Tips
+
+1. **Use AWS Free Tier maximally in first year**
+2. **Choose on-demand DynamoDB** until predictable traffic
+3. **Enable S3 Intelligent-Tiering** for older files
+4. **Use SES instead of SendGrid** (free tier is 62K emails/month)
+5. **Compress CloudFront responses** to reduce data transfer
+6. **Archive old CloudWatch Logs** to S3 after 30 days
+7. **Right-size Lambda memory** based on actual usage metrics
+8. **Use AWS Cost Anomaly Detection** for unexpected charges
+9. **Tag all resources** for cost allocation per tenant
+10. **Set billing alarms** at $10, $50, $100, $500 thresholds
+
+### Revenue Model Suggestions
+
+To ensure profitability with these costs:
+
+| Plan | Price/Month | Invoices Included | Margins |
+|------|-------------|-------------------|---------|
+| **Free** | $0 | 50 invoices | Loss leader |
+| **Starter** | $19 | 200 invoices | ~60% margin |
+| **Professional** | $49 | 1,000 invoices | ~75% margin |
+| **Business** | $149 | 5,000 invoices | ~80% margin |
+| **Enterprise** | Custom | Unlimited | 85%+ margin |
+
+**Additional revenue streams:**
+- SMS credits: $0.02/SMS (vs $0.0065 cost)
+- Extra users: $5/user/month
+- API access: $29/month add-on
+- White-label branding: $99/month add-on
+- Premium support: $199/month
 
 ---
 
 ## Future Considerations
 
 ### Phase 2 Enhancements
-- Mobile applications (iOS/Android)
-- Advanced analytics and forecasting
-- Machine learning for payment prediction
+- Mobile applications (iOS/Android) using React Native
+- Advanced analytics with QuickSight dashboards
+- Machine learning for payment prediction (SageMaker)
 - Multi-currency and international support
-- Accounting software integrations (QuickBooks, Xero)
+- Accounting software integrations (QuickBooks, Xero) via OAuth
 
-### Microservices Evolution
-- Split monolith into focused microservices as scale demands
-- Service mesh for inter-service communication (Istio)
-- Event-driven architecture with message brokers
+### Serverless Evolution
+- **AWS AppSync:** GraphQL API for real-time features
+- **Step Functions:** Complex workflow orchestration
+- **Aurora Serverless:** If relational data needs grow (hybrid approach)
+- **EventBridge Pipes:** Enhanced event routing
+- **Lambda@Edge:** Geo-distributed logic
 
 ### Advanced Features
-- Voice call reminders (Twilio Voice)
-- WhatsApp/Telegram notifications
-- Automated payment plans
-- Customer credit scoring
-- Blockchain-based payment verification
+- Voice call reminders (Amazon Connect or Twilio)
+- WhatsApp/Telegram notifications (Business APIs)
+- Automated payment plans with Step Functions
+- Customer credit scoring using SageMaker
+- Blockchain-based payment verification (experimental)
+
+### Global Expansion
+- **CloudFront** for global CDN
+- **DynamoDB Global Tables** for multi-region active-active
+- **Route53 geolocation routing** for regional API endpoints
+- **Multi-region Lambda** deployment via AWS SAM
+- **Currency localization** with automated exchange rates
 
 ---
 
 ## Conclusion
 
-This architecture provides a solid foundation for DueMate to:
-- Deliver reliable invoice reminder functionality
-- Scale to thousands of tenants
-- Support whitelabel requirements
-- Integrate with modern payment and banking systems
-- Maintain security and compliance
-- Evolve with business needs
+This serverless architecture provides DueMate with:
+- **Near-zero baseline costs** during early development and low-traffic periods
+- **Automatic scalability** from 0 to millions of requests without manual intervention
+- **No infrastructure management** - focus entirely on business logic
+- **Predictable scaling costs** - pay only for actual usage
+- **Production-grade reliability** - leveraging AWS managed services
+- **Fast iteration cycles** - deploy changes in minutes via CI/CD
+- **Multi-tenancy ready** - secure isolation via DynamoDB partition keys
+- **Whitelabel support** - flexible branding via S3 and CloudFront
 
-The chosen technology stack balances proven reliability with modern developer experience, ensuring rapid development while maintaining production-grade quality.
+The chosen **serverless-first AWS stack** balances:
+- ✅ **Minimal operational overhead** (no servers to manage)
+- ✅ **Extremely low startup costs** (leveraging generous free tiers)
+- ✅ **Linear cost scaling** (costs grow proportionally with usage)
+- ✅ **Production reliability** (AWS SLAs and managed services)
+- ✅ **Developer productivity** (TypeScript, modern tooling, IaC)
+
+This approach enables a **solo developer or small team** to build and launch DueMate with near-zero infrastructure costs while maintaining the ability to scale to thousands of customers without architectural changes.
 
 ---
 
@@ -1054,34 +1391,231 @@ The chosen technology stack balances proven reliability with modern developer ex
 
 ### Development Environment Setup
 
-1. **Prerequisites:** Node.js 20+, PostgreSQL 15+, Redis 7+, Docker
-2. **Repository:** Clone and install dependencies
-3. **Environment Variables:** Copy `.env.example` to `.env`
-4. **Database:** Run migrations with Prisma
-5. **Start Services:** `docker-compose up` for dependencies
-6. **Run Application:** `npm run dev`
+**Prerequisites:**
+- Node.js 20 LTS
+- AWS CLI configured with credentials
+- AWS SAM CLI or Serverless Framework
+- Docker (for local Lambda testing)
+
+**Local Development:**
+```bash
+# Clone repository
+git clone https://github.com/yourorg/duemate.git
+cd duemate
+
+# Install dependencies
+npm install
+
+# Install Serverless Framework globally (or use SAM)
+npm install -g serverless
+
+# Configure environment variables
+cp .env.example .env.local
+# Edit .env.local with local DynamoDB, etc.
+
+# Start local DynamoDB (using Docker)
+docker run -p 8000:8000 amazon/dynamodb-local
+
+# Create local tables
+npm run db:setup-local
+
+# Start local API using SAM or Serverless Offline
+serverless offline start
+# OR
+sam local start-api
+
+# Frontend development
+cd frontend
+npm install
+npm run dev
+```
+
+**Testing Locally:**
+```bash
+# Unit tests
+npm test
+
+# Integration tests with local DynamoDB
+npm run test:integration
+
+# E2E tests
+npm run test:e2e
+
+# Invoke specific Lambda locally
+sam local invoke InvoiceCreateFunction --event events/invoice-create.json
+```
 
 ### Deployment Pipeline
 
-1. **Development:** Feature branches → Pull requests
-2. **Staging:** Automatic deployment on merge to `develop`
-3. **Production:** Tagged releases deployed to production
-4. **Rollback:** Automatic rollback on health check failures
+**GitHub Actions Workflow:**
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+
+  deploy-staging:
+    needs: test
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm ci
+      - run: serverless deploy --stage staging
+
+  deploy-production:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm ci
+      - run: serverless deploy --stage production
+```
+
+**Deployment Stages:**
+1. **Development:** Local development with SAM/Serverless Offline
+2. **Staging:** Auto-deploy on merge to `develop` branch
+3. **Production:** Auto-deploy on merge to `main` branch
+4. **Rollback:** Use AWS Lambda versions/aliases for instant rollback
+
+**Infrastructure as Code:**
+```bash
+# Deploy entire stack
+serverless deploy
+
+# Deploy single function (faster iteration)
+serverless deploy function -f invoiceCreate
+
+# Remove stack
+serverless remove
+
+# View logs
+serverless logs -f invoiceCreate -t
+```
 
 ### API Documentation
 
-- **OpenAPI/Swagger:** Auto-generated API documentation
-- **Postman Collection:** Available for API testing
-- **GraphQL Playground:** Interactive query builder (if GraphQL used)
+**OpenAPI/Swagger:**
+- Auto-generated from API Gateway configuration
+- Available at: `https://api.duemate.com/docs`
+- Export: `aws apigateway get-export --rest-api-id xxx --export-type swagger`
+
+**Postman Collection:**
+- Import from OpenAPI spec
+- Environment variables for staging/production
+- Pre-request scripts for authentication
+
+### DynamoDB Table Design
+
+**Main Table: `duemate-main`**
+```
+Attributes:
+- PK (String, Partition Key)
+- SK (String, Sort Key)
+- GSI1PK (String, GSI-1 Partition Key)
+- GSI1SK (String, GSI-1 Sort Key)
+- GSI2PK (String, GSI-2 Partition Key)
+- GSI2SK (String, GSI-2 Sort Key)
+- [Additional attributes as needed]
+
+Global Secondary Indexes:
+- GSI-1: GSI1PK (PK) + GSI1SK (SK)
+- GSI-2: GSI2PK (PK) + GSI2SK (SK)
+
+Billing Mode: On-Demand (PAY_PER_REQUEST)
+Point-in-time Recovery: Enabled
+Encryption: AWS-managed KMS key
+```
+
+### Useful AWS CLI Commands
+
+```bash
+# Invoke Lambda function
+aws lambda invoke \
+  --function-name duemate-prod-invoiceCreate \
+  --payload '{"tenantId":"123","amount":100}' \
+  response.json
+
+# Query DynamoDB
+aws dynamodb query \
+  --table-name duemate-main \
+  --key-condition-expression "PK = :pk" \
+  --expression-attribute-values '{":pk":{"S":"TENANT#123"}}'
+
+# View CloudWatch Logs
+aws logs tail /aws/lambda/duemate-prod-invoiceCreate --follow
+
+# Get API Gateway endpoint
+aws apigateway get-rest-apis --query 'items[?name==`duemate-prod`]'
+
+# List S3 buckets
+aws s3 ls
+
+# Invalidate CloudFront cache
+aws cloudfront create-invalidation \
+  --distribution-id E1234567890ABC \
+  --paths "/*"
+```
+
+### Monitoring Dashboards
+
+**CloudWatch Dashboard:**
+- Lambda performance (invocations, duration, errors, throttles)
+- DynamoDB metrics (read/write capacity, throttles)
+- API Gateway metrics (requests, latency, errors)
+- Cost estimates by service
+
+**Recommended Alarms:**
+1. Lambda error rate > 1%
+2. API Gateway 5xx errors > 5%
+3. DynamoDB throttled requests > 0
+4. SQS queue depth > 100
+5. Monthly cost > budget threshold
 
 ### Team Onboarding Resources
 
 - [Development Setup Guide](./development-setup.md) *(to be created)*
 - [API Documentation](./api-documentation.md) *(to be created)*
-- [Database Schema](./database-schema.md) *(to be created)*
+- [DynamoDB Schema & Access Patterns](./database-schema.md) *(to be created)*
 - [Deployment Guide](./deployment-guide.md) *(to be created)*
+- [Serverless Best Practices](./serverless-best-practices.md) *(to be created)*
+- [Cost Optimization Guide](./cost-optimization.md) *(to be created)*
+
+### Security Checklist
+
+- [ ] Enable AWS CloudTrail for audit logging
+- [ ] Use Secrets Manager for all API keys and credentials
+- [ ] Enable DynamoDB encryption at rest
+- [ ] Enable S3 bucket versioning and encryption
+- [ ] Configure IAM roles with least privilege
+- [ ] Enable API Gateway request validation
+- [ ] Implement rate limiting on API Gateway
+- [ ] Use WAF for DDoS protection (if needed)
+- [ ] Enable MFA for AWS root account
+- [ ] Regular security audits with AWS Inspector
+- [ ] HTTPS only for all endpoints
+- [ ] Rotate Cognito user pool secrets regularly
 
 ---
 
 **Document Owner:** Engineering Team  
-**Review Schedule:** Quarterly or as needed for major changes
+**Last Updated:** October 2025  
+**Review Schedule:** Quarterly or as needed for major changes  
+**Architecture Version:** 2.0 (Serverless-First)
