@@ -252,16 +252,19 @@ terraform init && terraform apply
 - Estimated cost: $0-5/month
 - Mostly covered by AWS free tier
 - Minimal usage expected
+- Configuration: 512MB Lambda, 7-day logs, no versioning
 
 ### Staging Environment
-- Estimated cost: $10-30/month
-- Some services beyond free tier
-- Moderate usage
+- Estimated cost: $0-5/month
+- Same configuration as dev for cost savings
+- Useful for testing before production deployment
+- Configuration: 512MB Lambda, 7-day logs, no versioning
 
 ### Production Environment
-- Estimated cost: $50-150/month (at scale)
-- Depends on actual usage
-- Can be optimized further
+- Estimated cost: $0-5/month
+- Same simplified configuration as dev/staging (until ~1000 customers)
+- Can be scaled up as customer base grows
+- Configuration: 512MB Lambda, 7-day logs, no versioning
 
 ## Next Steps
 

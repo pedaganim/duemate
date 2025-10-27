@@ -17,14 +17,9 @@ variable "custom_domain" {
 }
 
 variable "alarm_email" {
-  description = "Email address for CloudWatch alarm notifications (REQUIRED for production)"
+  description = "Email address for CloudWatch alarm notifications"
   type        = string
-}
-
-variable "enable_vpc" {
-  description = "Enable VPC for Lambda functions"
-  type        = bool
-  default     = false
+  default     = null
 }
 
 # Third-party integration variables

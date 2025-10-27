@@ -13,21 +13,23 @@ terraform apply
 
 ## Configuration
 
-The production environment uses:
-- On-demand DynamoDB billing (with auto-scaling ready)
-- High Lambda memory (1536 MB)
-- Long log retention (30 days)
-- Single or multi-region deployment
+The production environment uses the same simple configuration as dev/staging:
+- On-demand DynamoDB billing
+- Lambda memory: 512 MB
+- Log retention: 7 days
+- S3 versioning: disabled (cost savings)
+- Single-region deployment
 - Custom domain support
-- Enhanced monitoring and alarms
+- Optional monitoring alarms
+
+This simplified configuration is designed for early-stage deployment (until ~1000 customers).
+Configuration can be scaled up as needed when customer base grows.
 
 ## Security Considerations
 
 - [ ] Review all security group rules
-- [ ] Enable VPC for Lambda functions (optional)
 - [ ] Configure custom domain with SSL
 - [ ] Set up CloudTrail for audit logging
-- [ ] Enable AWS Config for compliance
 - [ ] Configure backup policies
 
 ## Outputs

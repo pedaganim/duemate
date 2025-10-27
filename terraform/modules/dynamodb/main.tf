@@ -87,18 +87,3 @@ resource "aws_dynamodb_table" "main" {
     }
   )
 }
-
-# Enable DynamoDB Streams (for change data capture)
-resource "aws_dynamodb_table" "main_with_stream" {
-  count = 0 # Set to 1 if you need streams
-
-  name           = var.table_name
-  billing_mode   = var.billing_mode
-  hash_key       = "PK"
-  range_key      = "SK"
-  stream_enabled = true
-  stream_view_type = "NEW_AND_OLD_IMAGES"
-
-  # Same configuration as main table
-  # (Omitted for brevity - would be same as above)
-}

@@ -18,38 +18,38 @@ module "duemate" {
 
   # Lambda Configuration
   lambda_runtime          = "nodejs20.x"
-  lambda_memory_size      = 1536  # Higher for production performance
-  lambda_timeout          = 60
-  lambda_log_retention_days = 30  # Longer retention for compliance
+  lambda_memory_size      = 512
+  lambda_timeout          = 30
+  lambda_log_retention_days = 7
 
   # API Gateway Configuration
   api_gateway_stage_name           = "prod"
   enable_api_gateway_logging       = true
-  api_gateway_throttle_burst_limit = 5000
-  api_gateway_throttle_rate_limit  = 10000
+  api_gateway_throttle_burst_limit = 1000
+  api_gateway_throttle_rate_limit  = 500
 
   # Cognito Configuration
   cognito_password_minimum_length = 12
-  enable_cognito_mfa             = "ON"  # Required for production
+  enable_cognito_mfa             = "OPTIONAL"
 
   # S3 and CloudFront Configuration
   enable_cloudfront     = true
-  cloudfront_price_class = "PriceClass_All"  # Global distribution
-  enable_s3_versioning  = true
+  cloudfront_price_class = "PriceClass_100"
+  enable_s3_versioning  = false  # Disabled to save costs
 
   # Monitoring Configuration
   enable_monitoring = true
-  alarm_email      = var.alarm_email
+  # alarm_email     = var.alarm_email  # Optional
 
   # EventBridge Configuration
-  reminder_check_schedule = "rate(15 minutes)"  # Frequent checks for production
+  reminder_check_schedule = "rate(1 hour)"
 
   # SQS Configuration
-  sqs_message_retention_seconds  = 1209600  # 14 days
-  sqs_visibility_timeout_seconds = 300
+  sqs_message_retention_seconds  = 345600  # 4 days
+  sqs_visibility_timeout_seconds = 300     # 5 minutes
 
-  # VPC Configuration (recommended for production)
-  enable_vpc = var.enable_vpc
+  # VPC Configuration (disabled)
+  enable_vpc = false
 
   # Third-party Integration Secrets
   stripe_api_key     = var.stripe_api_key

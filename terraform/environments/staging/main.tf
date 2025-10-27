@@ -14,15 +14,15 @@ module "duemate" {
 
   # Lambda Configuration
   lambda_runtime          = "nodejs20.x"
-  lambda_memory_size      = 1024  # Higher for staging
-  lambda_timeout          = 60
-  lambda_log_retention_days = 14  # Longer retention
+  lambda_memory_size      = 512
+  lambda_timeout          = 30
+  lambda_log_retention_days = 7
 
   # API Gateway Configuration
   api_gateway_stage_name           = "staging"
   enable_api_gateway_logging       = true
-  api_gateway_throttle_burst_limit = 2500
-  api_gateway_throttle_rate_limit  = 2000
+  api_gateway_throttle_burst_limit = 1000
+  api_gateway_throttle_rate_limit  = 500
 
   # Cognito Configuration
   cognito_password_minimum_length = 12
@@ -30,21 +30,21 @@ module "duemate" {
 
   # S3 and CloudFront Configuration
   enable_cloudfront     = true
-  cloudfront_price_class = "PriceClass_200"
-  enable_s3_versioning  = true
+  cloudfront_price_class = "PriceClass_100"
+  enable_s3_versioning  = false  # Disabled to save costs
 
   # Monitoring Configuration
   enable_monitoring = true
-  alarm_email      = var.alarm_email
+  # alarm_email     = var.alarm_email  # Optional
 
   # EventBridge Configuration
-  reminder_check_schedule = "rate(30 minutes)"  # More frequent checks
+  reminder_check_schedule = "rate(1 hour)"
 
   # SQS Configuration
-  sqs_message_retention_seconds  = 604800  # 7 days
-  sqs_visibility_timeout_seconds = 300
+  sqs_message_retention_seconds  = 345600  # 4 days
+  sqs_visibility_timeout_seconds = 300     # 5 minutes
 
-  # VPC Configuration (optional)
+  # VPC Configuration (disabled)
   enable_vpc = false
 
   # Additional tags
