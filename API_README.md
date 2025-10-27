@@ -1,0 +1,329 @@
+# DueMate Invoice API
+
+A RESTful API for invoice management with PDF generation capabilities.
+
+## Features
+
+- ✅ Full CRUD operations for invoices
+- ✅ PDF preview and download functionality
+- ✅ Input validation using Joi
+- ✅ Swagger/OpenAPI documentation
+- ✅ SQLite database with Prisma ORM
+- ✅ No authentication required (public access)
+- ✅ Pagination and filtering support
+- ✅ Professional PDF invoice templates
+
+## Tech Stack
+
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Express.js
+- **Database**: SQLite with Prisma ORM
+- **PDF Generation**: PDFKit
+- **Validation**: Joi
+- **API Documentation**: Swagger/OpenAPI
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/pedaganim/duemate.git
+cd duemate
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up the database:
+```bash
+npm run prisma:migrate
+```
+
+4. Start the development server:
+```bash
+npm run dev
+```
+
+The server will start on `http://localhost:3000`
+
+## API Documentation
+
+Once the server is running, visit:
+- **Swagger UI**: http://localhost:3000/api-docs
+- **OpenAPI JSON**: http://localhost:3000/api-docs.json
+
+## API Endpoints
+
+### Invoice CRUD Operations
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/invoices` | Create a new invoice |
+| GET | `/api/invoices` | Get all invoices (with pagination & filtering) |
+| GET | `/api/invoices/:id` | Get a single invoice by ID |
+| PUT | `/api/invoices/:id` | Update an invoice |
+| DELETE | `/api/invoices/:id` | Delete an invoice |
+| GET | `/api/invoices/:id/preview` | Preview invoice as PDF in browser |
+| GET | `/api/invoices/:id/download` | Download invoice as PDF |
+
+### Other Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | API information |
+| GET | `/health` | Health check |
+
+## Usage Examples
+
+### Create an Invoice
+
+```bash
+curl -X POST http://localhost:3000/api/invoices \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clientName": "Acme Corp",
+    "clientEmail": "billing@acme.com",
+    "clientAddress": "123 Business St, City, State 12345",
+    "amount": 1500.00,
+    "currency": "USD",
+    "dueDate": "2024-12-31",
+    "subtotal": 1500.00,
+    "total": 1500.00,
+    "status": "draft",
+    "description": "Web development services",
+    "items": [
+      {
+        "description": "Frontend Development",
+        "quantity": 40,
+        "unitPrice": 25.00,
+        "amount": 1000.00
+      },
+      {
+        "description": "Backend Development",
+        "quantity": 20,
+        "unitPrice": 25.00,
+        "amount": 500.00
+      }
+    ],
+    "notes": "Payment due within 30 days"
+  }'
+```
+
+### Get All Invoices
+
+```bash
+# Get all invoices
+curl http://localhost:3000/api/invoices
+
+# With pagination
+curl "http://localhost:3000/api/invoices?page=1&limit=10"
+
+# Filter by status
+curl "http://localhost:3000/api/invoices?status=paid"
+
+# Filter by client email
+curl "http://localhost:3000/api/invoices?clientEmail=billing@acme.com"
+
+# Sort by due date
+curl "http://localhost:3000/api/invoices?sortBy=dueDate&sortOrder=asc"
+```
+
+### Get Single Invoice
+
+```bash
+curl http://localhost:3000/api/invoices/{invoice-id}
+```
+
+### Update an Invoice
+
+```bash
+curl -X PUT http://localhost:3000/api/invoices/{invoice-id} \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "paid",
+    "notes": "Paid via bank transfer"
+  }'
+```
+
+### Delete an Invoice
+
+```bash
+curl -X DELETE http://localhost:3000/api/invoices/{invoice-id}
+```
+
+### Preview Invoice PDF
+
+Open in browser:
+```
+http://localhost:3000/api/invoices/{invoice-id}/preview
+```
+
+### Download Invoice PDF
+
+```bash
+curl http://localhost:3000/api/invoices/{invoice-id}/download -o invoice.pdf
+```
+
+## Invoice Schema
+
+### Required Fields
+
+- `clientName` (string): Name of the client
+- `clientEmail` (string): Client's email address
+- `amount` (number): Total invoice amount
+- `dueDate` (date): Payment due date
+- `subtotal` (number): Subtotal before tax
+- `total` (number): Total amount including tax
+
+### Optional Fields
+
+- `invoiceNumber` (string): Auto-generated if not provided
+- `clientAddress` (string): Client's address
+- `currency` (string): Currency code (default: USD)
+- `issueDate` (date): Invoice issue date (default: now)
+- `status` (enum): draft, sent, paid, overdue, cancelled (default: draft)
+- `description` (string): Invoice description
+- `items` (array): Line items with description, quantity, unitPrice, amount
+- `notes` (string): Additional notes
+- `taxRate` (number): Tax percentage (0-100)
+- `taxAmount` (number): Calculated tax amount
+
+## Query Parameters
+
+### List Invoices
+
+- `page` (number): Page number (default: 1)
+- `limit` (number): Items per page (default: 10, max: 100)
+- `status` (string): Filter by status (draft, sent, paid, overdue, cancelled)
+- `clientEmail` (string): Filter by client email
+- `startDate` (date): Filter by issue date (from)
+- `endDate` (date): Filter by issue date (to)
+- `sortBy` (string): Sort field (invoiceNumber, issueDate, dueDate, amount, status, createdAt)
+- `sortOrder` (string): Sort direction (asc, desc)
+
+## Development
+
+### Available Scripts
+
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build TypeScript to JavaScript
+- `npm start` - Start production server
+- `npm run prisma:generate` - Generate Prisma client
+- `npm run prisma:migrate` - Run database migrations
+- `npm run prisma:studio` - Open Prisma Studio (database GUI)
+
+### Project Structure
+
+```
+duemate/
+├── prisma/
+│   ├── schema.prisma       # Database schema
+│   └── migrations/         # Database migrations
+├── src/
+│   ├── config/            # Configuration files
+│   │   ├── database.ts    # Prisma client
+│   │   └── swagger.ts     # Swagger configuration
+│   ├── controllers/       # Request handlers
+│   │   └── invoice.controller.ts
+│   ├── routes/           # API routes
+│   │   └── invoice.routes.ts
+│   ├── services/         # Business logic
+│   │   ├── invoice.service.ts
+│   │   └── pdf.service.ts
+│   ├── types/           # TypeScript types
+│   │   └── invoice.types.ts
+│   ├── utils/           # Utilities
+│   │   └── validation.ts
+│   ├── app.ts          # Express app setup
+│   └── index.ts        # Server entry point
+├── .env                # Environment variables
+├── .gitignore
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+## Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# Database
+DATABASE_URL="file:./dev.db"
+
+# Server
+PORT=3000
+NODE_ENV=development
+```
+
+## Database Schema
+
+The Invoice model includes:
+
+- `id` - UUID primary key
+- `invoiceNumber` - Unique invoice number (auto-generated)
+- `clientName` - Client's name
+- `clientEmail` - Client's email
+- `clientAddress` - Client's address (optional)
+- `amount` - Invoice amount
+- `currency` - Currency code (default: USD)
+- `issueDate` - Date invoice was issued
+- `dueDate` - Payment due date
+- `status` - Invoice status (draft, sent, paid, overdue, cancelled)
+- `description` - Invoice description
+- `items` - JSON array of line items
+- `notes` - Additional notes
+- `taxRate` - Tax percentage
+- `taxAmount` - Tax amount
+- `subtotal` - Subtotal before tax
+- `total` - Total amount
+- `createdAt` - Creation timestamp
+- `updatedAt` - Last update timestamp
+
+## PDF Features
+
+The generated PDF invoices include:
+
+- Professional invoice layout
+- Company header with contact information
+- Invoice details (number, dates, status)
+- Client billing information
+- Itemized line items with quantities and prices
+- Subtotal, tax, and total calculations
+- Notes and description fields
+- Clean, printable format
+
+## Error Handling
+
+The API returns consistent error responses:
+
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "details": ["Validation error details"]
+}
+```
+
+Common HTTP status codes:
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request (validation error)
+- `404` - Not Found
+- `500` - Internal Server Error
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+TBD
