@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import { Invoice } from '@prisma/client';
 import { InvoiceItem } from '../types/invoice.types';
+import { formatCurrency } from '../utils/currency';
 
 export class PDFService {
   /**
@@ -19,7 +20,7 @@ export class PDFService {
     this.addHeader(doc, invoice);
     this.addInvoiceDetails(doc, invoice);
     this.addClientDetails(doc, invoice);
-    this.addLineItems(doc, items);
+    this.addLineItems(doc, items, invoice.currency);
     this.addTotals(doc, invoice);
     this.addFooter(doc, invoice);
 
@@ -106,7 +107,7 @@ export class PDFService {
     doc.moveDown(3);
   }
 
-  private addLineItems(doc: PDFKit.PDFDocument, items: InvoiceItem[]) {
+  private addLineItems(doc: PDFKit.PDFDocument, items: InvoiceItem[], currency: string) {
     const tableTop = 280;
     const itemCodeX = 50;
     const descriptionX = 150;
@@ -141,8 +142,8 @@ export class PDFService {
           .fontSize(9)
           .text(item.description, descriptionX, position, { width: 150 })
           .text(item.quantity.toString(), quantityX, position)
-          .text(`$${item.unitPrice.toFixed(2)}`, priceX, position)
-          .text(`$${item.amount.toFixed(2)}`, amountX, position);
+          .text(formatCurrency(item.unitPrice, currency), priceX, position)
+          .text(formatCurrency(item.amount, currency), amountX, position);
 
         position += 25;
       });
@@ -169,14 +170,14 @@ export class PDFService {
     doc.fontSize(10).font('Helvetica-Bold');
 
     // Subtotal
-    doc.text('Subtotal:', 380, yOffset).text(`$${invoice.subtotal.toFixed(2)}`, 480, yOffset);
+    doc.text('Subtotal:', 380, yOffset).text(formatCurrency(invoice.subtotal, invoice.currency), 480, yOffset);
     yOffset += 20;
 
     // Discount
     if (invoice.discount && invoice.discount > 0) {
       doc
         .text(`Discount (${invoice.discount}%):`, 380, yOffset)
-        .text(`-$${(invoice.discountAmount || 0).toFixed(2)}`, 480, yOffset);
+        .text(`-${formatCurrency(invoice.discountAmount || 0, invoice.currency)}`, 480, yOffset);
       yOffset += 20;
     }
 
@@ -184,7 +185,7 @@ export class PDFService {
     if (invoice.shipping && invoice.shipping > 0) {
       doc
         .text('Shipping:', 380, yOffset)
-        .text(`$${invoice.shipping.toFixed(2)}`, 480, yOffset);
+        .text(formatCurrency(invoice.shipping, invoice.currency), 480, yOffset);
       yOffset += 20;
     }
 
@@ -192,7 +193,7 @@ export class PDFService {
     if (invoice.taxRate && invoice.taxRate > 0) {
       doc
         .text(`Tax (${invoice.taxRate}%):`, 380, yOffset)
-        .text(`$${(invoice.taxAmount || 0).toFixed(2)}`, 480, yOffset);
+        .text(formatCurrency(invoice.taxAmount || 0, invoice.currency), 480, yOffset);
       yOffset += 20;
     }
 
@@ -200,7 +201,7 @@ export class PDFService {
     doc
       .fontSize(12)
       .text('TOTAL:', 380, yOffset)
-      .text(`${invoice.currency} $${invoice.total.toFixed(2)}`, 480, yOffset);
+      .text(`${invoice.currency} ${formatCurrency(invoice.total, invoice.currency)}`, 480, yOffset);
     yOffset += 30;
 
     // Amount Paid
@@ -208,7 +209,7 @@ export class PDFService {
       doc
         .fontSize(10)
         .text('Amount Paid:', 380, yOffset)
-        .text(`$${invoice.amountPaid.toFixed(2)}`, 480, yOffset);
+        .text(formatCurrency(invoice.amountPaid, invoice.currency), 480, yOffset);
       yOffset += 20;
     }
 
@@ -218,7 +219,7 @@ export class PDFService {
         .fontSize(12)
         .font('Helvetica-Bold')
         .text('BALANCE DUE:', 380, yOffset)
-        .text(`${invoice.currency} $${invoice.balanceDue.toFixed(2)}`, 480, yOffset);
+        .text(`${invoice.currency} ${formatCurrency(invoice.balanceDue, invoice.currency)}`, 480, yOffset);
     }
 
     doc.fontSize(10).font('Helvetica');

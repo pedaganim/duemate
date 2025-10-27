@@ -290,7 +290,7 @@ The Invoice model includes:
 - `clientEmail` - Client's email
 - `clientAddress` - Client's address (optional)
 - `amount` - Invoice amount
-- `currency` - Currency code (default: USD)
+- `currency` - Currency code (default: AUD)
 - `issueDate` - Date invoice was issued
 - `dueDate` - Payment due date
 - `status` - Invoice status (draft, sent, paid, overdue, cancelled)
