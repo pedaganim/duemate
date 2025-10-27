@@ -10,6 +10,8 @@ export interface CreateInvoiceDTO {
   clientName: string;
   clientEmail: string;
   clientAddress?: string;
+  clientDetails?: string;
+  customerDetails?: string;
   amount: number;
   currency?: string;
   issueDate?: Date | string;
@@ -20,14 +22,21 @@ export interface CreateInvoiceDTO {
   notes?: string;
   taxRate?: number;
   taxAmount?: number;
+  discount?: number;
+  discountAmount?: number;
+  shipping?: number;
   subtotal: number;
   total: number;
+  amountPaid?: number;
+  balanceDue?: number;
 }
 
 export interface UpdateInvoiceDTO {
   clientName?: string;
   clientEmail?: string;
   clientAddress?: string;
+  clientDetails?: string;
+  customerDetails?: string;
   amount?: number;
   currency?: string;
   issueDate?: Date | string;
@@ -38,8 +47,13 @@ export interface UpdateInvoiceDTO {
   notes?: string;
   taxRate?: number;
   taxAmount?: number;
+  discount?: number;
+  discountAmount?: number;
+  shipping?: number;
   subtotal?: number;
   total?: number;
+  amountPaid?: number;
+  balanceDue?: number;
 }
 
 export interface InvoiceQueryParams {

@@ -92,11 +92,20 @@ curl -X POST http://localhost:3000/api/invoices \
     "clientName": "Acme Corp",
     "clientEmail": "billing@acme.com",
     "clientAddress": "123 Business St, City, State 12345",
+    "clientDetails": "Acme Corporation\nABN: 12 345 678 901\n123 Business St\nSydney, NSW 2000",
+    "customerDetails": "DueMate Pty Ltd\nABN: 98 765 432 109\n456 Vendor Ave\nMelbourne, VIC 3000",
     "amount": 1500.00,
-    "currency": "USD",
+    "currency": "AUD",
     "dueDate": "2024-12-31",
     "subtotal": 1500.00,
-    "total": 1500.00,
+    "discount": 10,
+    "discountAmount": 150.00,
+    "shipping": 50.00,
+    "taxRate": 10,
+    "taxAmount": 140.00,
+    "total": 1540.00,
+    "amountPaid": 500.00,
+    "balanceDue": 1040.00,
     "status": "draft",
     "description": "Web development services",
     "items": [
@@ -187,7 +196,9 @@ curl http://localhost:3000/api/invoices/{invoice-id}/download -o invoice.pdf
 
 - `invoiceNumber` (string): Auto-generated if not provided
 - `clientAddress` (string): Client's address
-- `currency` (string): Currency code (default: USD)
+- `clientDetails` (string): Detailed client information (company name, ABN, address, etc.)
+- `customerDetails` (string): Vendor/Seller details (company name, ABN, address, etc.)
+- `currency` (string): Currency code - supports AUD, USD, EUR, GBP, JPY, CAD, CHF, CNY, SEK, NZD, MXN, SGD, HKD, NOK, KRW, TRY, RUB, INR, BRL, ZAR (default: AUD)
 - `issueDate` (date): Invoice issue date (default: now)
 - `status` (enum): draft, sent, paid, overdue, cancelled (default: draft)
 - `description` (string): Invoice description
@@ -195,6 +206,11 @@ curl http://localhost:3000/api/invoices/{invoice-id}/download -o invoice.pdf
 - `notes` (string): Additional notes
 - `taxRate` (number): Tax percentage (0-100)
 - `taxAmount` (number): Calculated tax amount
+- `discount` (number): Discount percentage (0-100)
+- `discountAmount` (number): Calculated discount amount
+- `shipping` (number): Shipping cost
+- `amountPaid` (number): Amount already paid
+- `balanceDue` (number): Remaining balance due
 
 ## Query Parameters
 

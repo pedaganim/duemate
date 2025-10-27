@@ -33,13 +33,21 @@ export class PDFService {
       .font('Helvetica-Bold')
       .text('INVOICE', 50, 50, { align: 'right' });
 
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .text('DueMate Invoice System', 50, 50)
-      .text('123 Business Street', 50, 65)
-      .text('City, State 12345', 50, 80)
-      .text('contact@duemate.com', 50, 95);
+    // Vendor/Customer details (if provided)
+    if (invoice.customerDetails) {
+      doc
+        .fontSize(10)
+        .font('Helvetica')
+        .text(invoice.customerDetails, 50, 50, { width: 250 });
+    } else {
+      doc
+        .fontSize(10)
+        .font('Helvetica')
+        .text('DueMate Invoice System', 50, 50)
+        .text('123 Business Street', 50, 65)
+        .text('City, State 12345', 50, 80)
+        .text('contact@duemate.com', 50, 95);
+    }
 
     doc.moveDown(2);
   }
@@ -79,13 +87,20 @@ export class PDFService {
       .font('Helvetica-Bold')
       .text('BILL TO:', 50, y);
 
-    doc
-      .font('Helvetica')
-      .text(invoice.clientName, 50, y + 15)
-      .text(invoice.clientEmail, 50, y + 30);
+    // Use clientDetails if provided, otherwise fall back to individual fields
+    if (invoice.clientDetails) {
+      doc
+        .font('Helvetica')
+        .text(invoice.clientDetails, 50, y + 15, { width: 250 });
+    } else {
+      doc
+        .font('Helvetica')
+        .text(invoice.clientName, 50, y + 15)
+        .text(invoice.clientEmail, 50, y + 30);
 
-    if (invoice.clientAddress) {
-      doc.text(invoice.clientAddress, 50, y + 45);
+      if (invoice.clientAddress) {
+        doc.text(invoice.clientAddress, 50, y + 45);
+      }
     }
 
     doc.moveDown(3);
@@ -149,24 +164,62 @@ export class PDFService {
 
   private addTotals(doc: PDFKit.PDFDocument, invoice: Invoice) {
     const position = 480;
+    let yOffset = position;
 
     doc.fontSize(10).font('Helvetica-Bold');
 
     // Subtotal
-    doc.text('Subtotal:', 380, position).text(`$${invoice.subtotal.toFixed(2)}`, 480, position);
+    doc.text('Subtotal:', 380, yOffset).text(`$${invoice.subtotal.toFixed(2)}`, 480, yOffset);
+    yOffset += 20;
+
+    // Discount
+    if (invoice.discount && invoice.discount > 0) {
+      doc
+        .text(`Discount (${invoice.discount}%):`, 380, yOffset)
+        .text(`-$${(invoice.discountAmount || 0).toFixed(2)}`, 480, yOffset);
+      yOffset += 20;
+    }
+
+    // Shipping
+    if (invoice.shipping && invoice.shipping > 0) {
+      doc
+        .text('Shipping:', 380, yOffset)
+        .text(`$${invoice.shipping.toFixed(2)}`, 480, yOffset);
+      yOffset += 20;
+    }
 
     // Tax
     if (invoice.taxRate && invoice.taxRate > 0) {
       doc
-        .text(`Tax (${invoice.taxRate}%):`, 380, position + 20)
-        .text(`$${(invoice.taxAmount || 0).toFixed(2)}`, 480, position + 20);
+        .text(`Tax (${invoice.taxRate}%):`, 380, yOffset)
+        .text(`$${(invoice.taxAmount || 0).toFixed(2)}`, 480, yOffset);
+      yOffset += 20;
     }
 
     // Total
     doc
       .fontSize(12)
-      .text('TOTAL:', 380, position + 40)
-      .text(`${invoice.currency} $${invoice.total.toFixed(2)}`, 480, position + 40);
+      .text('TOTAL:', 380, yOffset)
+      .text(`${invoice.currency} $${invoice.total.toFixed(2)}`, 480, yOffset);
+    yOffset += 30;
+
+    // Amount Paid
+    if (invoice.amountPaid && invoice.amountPaid > 0) {
+      doc
+        .fontSize(10)
+        .text('Amount Paid:', 380, yOffset)
+        .text(`$${invoice.amountPaid.toFixed(2)}`, 480, yOffset);
+      yOffset += 20;
+    }
+
+    // Balance Due
+    if (invoice.balanceDue !== undefined && invoice.balanceDue !== null) {
+      doc
+        .fontSize(12)
+        .font('Helvetica-Bold')
+        .text('BALANCE DUE:', 380, yOffset)
+        .text(`${invoice.currency} $${invoice.balanceDue.toFixed(2)}`, 480, yOffset);
+    }
 
     doc.fontSize(10).font('Helvetica');
   }

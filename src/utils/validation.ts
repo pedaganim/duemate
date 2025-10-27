@@ -7,13 +7,21 @@ const invoiceItemSchema = Joi.object({
   amount: Joi.number().min(0).required(),
 });
 
+// List of common currency codes
+const currencyCodes = [
+  'AUD', 'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'CHF', 'CNY', 'SEK', 'NZD',
+  'MXN', 'SGD', 'HKD', 'NOK', 'KRW', 'TRY', 'RUB', 'INR', 'BRL', 'ZAR'
+];
+
 export const createInvoiceSchema = Joi.object({
   invoiceNumber: Joi.string().optional(),
   clientName: Joi.string().required().min(2).max(255),
   clientEmail: Joi.string().email().required(),
   clientAddress: Joi.string().optional().allow(''),
+  clientDetails: Joi.string().optional().allow(''),
+  customerDetails: Joi.string().optional().allow(''),
   amount: Joi.number().min(0).required(),
-  currency: Joi.string().length(3).default('USD'),
+  currency: Joi.string().valid(...currencyCodes).default('AUD'),
   issueDate: Joi.date().iso().optional(),
   dueDate: Joi.date().iso().required(),
   status: Joi.string()
@@ -24,16 +32,23 @@ export const createInvoiceSchema = Joi.object({
   notes: Joi.string().optional().allow(''),
   taxRate: Joi.number().min(0).max(100).optional(),
   taxAmount: Joi.number().min(0).optional(),
+  discount: Joi.number().min(0).max(100).optional(),
+  discountAmount: Joi.number().min(0).optional(),
+  shipping: Joi.number().min(0).optional(),
   subtotal: Joi.number().min(0).required(),
   total: Joi.number().min(0).required(),
+  amountPaid: Joi.number().min(0).optional(),
+  balanceDue: Joi.number().min(0).optional(),
 });
 
 export const updateInvoiceSchema = Joi.object({
   clientName: Joi.string().min(2).max(255).optional(),
   clientEmail: Joi.string().email().optional(),
   clientAddress: Joi.string().optional().allow(''),
+  clientDetails: Joi.string().optional().allow(''),
+  customerDetails: Joi.string().optional().allow(''),
   amount: Joi.number().min(0).optional(),
-  currency: Joi.string().length(3).optional(),
+  currency: Joi.string().valid(...currencyCodes).optional(),
   issueDate: Joi.date().iso().optional(),
   dueDate: Joi.date().iso().optional(),
   status: Joi.string()
@@ -44,8 +59,13 @@ export const updateInvoiceSchema = Joi.object({
   notes: Joi.string().optional().allow(''),
   taxRate: Joi.number().min(0).max(100).optional(),
   taxAmount: Joi.number().min(0).optional(),
+  discount: Joi.number().min(0).max(100).optional(),
+  discountAmount: Joi.number().min(0).optional(),
+  shipping: Joi.number().min(0).optional(),
   subtotal: Joi.number().min(0).optional(),
   total: Joi.number().min(0).optional(),
+  amountPaid: Joi.number().min(0).optional(),
+  balanceDue: Joi.number().min(0).optional(),
 }).min(1);
 
 export const queryInvoicesSchema = Joi.object({

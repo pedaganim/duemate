@@ -43,11 +43,18 @@ const router = Router();
  *           type: string
  *         clientAddress:
  *           type: string
+ *         clientDetails:
+ *           type: string
+ *           description: Client company details (name, ABN, address, etc.)
+ *         customerDetails:
+ *           type: string
+ *           description: Vendor/Seller company details (name, ABN, address, etc.)
  *         amount:
  *           type: number
  *         currency:
  *           type: string
- *           default: USD
+ *           default: AUD
+ *           enum: [AUD, USD, EUR, GBP, JPY, CAD, CHF, CNY, SEK, NZD, MXN, SGD, HKD, NOK, KRW, TRY, RUB, INR, BRL, ZAR]
  *         issueDate:
  *           type: string
  *           format: date-time
@@ -67,11 +74,23 @@ const router = Router();
  *           type: string
  *         taxRate:
  *           type: number
+ *           description: Tax rate percentage (0-100)
  *         taxAmount:
+ *           type: number
+ *         discount:
+ *           type: number
+ *           description: Discount percentage (0-100)
+ *         discountAmount:
+ *           type: number
+ *         shipping:
  *           type: number
  *         subtotal:
  *           type: number
  *         total:
+ *           type: number
+ *         amountPaid:
+ *           type: number
+ *         balanceDue:
  *           type: number
  */
 
