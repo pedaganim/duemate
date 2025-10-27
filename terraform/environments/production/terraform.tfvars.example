@@ -1,0 +1,27 @@
+# Production Environment Variables Example
+# Copy this file to terraform.tfvars and customize
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Required: Email for production alerts
+alarm_email = "ops@yourcompany.com"
+
+# Optional: Customer/Whitelabel Configuration
+# customer_name = "acmecorp"
+# custom_domain = "invoices.acmecorp.com"
+
+# Optional: VPC Configuration
+# enable_vpc = true
+
+# Optional: Third-party Integrations (use environment variables or secrets manager instead)
+# DO NOT commit these values to version control!
+# stripe_api_key     = "sk_live_..."
+# twilio_account_sid = "AC..."
+# twilio_auth_token  = "..."
+# plaid_client_id    = "..."
+# plaid_secret       = "..."
+
+# Email Configuration
+# email_from_address = "noreply@yourcompany.com"
+# email_from_name    = "DueMate"
