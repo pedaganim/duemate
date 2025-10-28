@@ -40,12 +40,6 @@ resource "aws_api_gateway_stage" "main" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   stage_name    = var.stage_name
 
-  # Throttling settings
-  throttle_settings {
-    burst_limit = var.throttle_burst_limit
-    rate_limit  = var.throttle_rate_limit
-  }
-
   # Enable access logging
   access_log_settings {
     destination_arn = var.enable_logging ? aws_cloudwatch_log_group.api_gateway[0].arn : null

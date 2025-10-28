@@ -122,6 +122,7 @@ output "cloudwatch_dashboard_name" {
 output "stripe_secret_arn" {
   description = "ARN of the Stripe secret in Secrets Manager"
   value       = var.stripe_api_key != null ? aws_secretsmanager_secret.stripe[0].arn : null
+  sensitive   = true
 }
 
 output "twilio_secret_arn" {
