@@ -6,6 +6,10 @@ package-lock.json
 dist/
 *.tsbuildinfo
 
+# Next.js
+.next/
+out/
+
 # Environment variables
 .env
 .env.local
@@ -47,3 +51,6 @@ temp/
 
 # Production
 build/
+
+# Vercel
+.vercel
