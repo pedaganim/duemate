@@ -13,8 +13,6 @@ dist/
 # Database
 *.db
 *.db-journal
-prisma/dev.db
-prisma/dev.db-journal
 
 # Generated files
 /src/generated/

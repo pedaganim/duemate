@@ -59,12 +59,22 @@ cd duemate
 npm install
 ```
 
-3. **Set up the database**
+3. **Set up environment variables**
 ```bash
-npm run prisma:migrate
+cp .env.example .env
+# Edit .env with your configuration
 ```
 
-4. **Start the server**
+4. **Set up DynamoDB (for local development)**
+```bash
+# Using Docker (recommended)
+docker run -d -p 8000:8000 amazon/dynamodb-local
+
+# Create the table using AWS CLI
+# See DYNAMODB_SETUP.md for detailed instructions
+```
+
+5. **Start the server**
 ```bash
 # Development mode with hot reload
 npm run dev
@@ -74,7 +84,7 @@ npm run build
 npm start
 ```
 
-5. **Access the API**
+6. **Access the API**
 - API Server: http://localhost:3000
 - Swagger Documentation: http://localhost:3000/api-docs
 - Health Check: http://localhost:3000/health
@@ -82,7 +92,9 @@ npm start
 ## Documentation
 
 - **[API Documentation](API_README.md)** - Complete API reference with examples
+- **[DynamoDB Setup Guide](DYNAMODB_SETUP.md)** - DynamoDB configuration and local development
 - **[Deployment Guide](DEPLOY.md)** - Comprehensive AWS deployment instructions with CI/CD
+- **[Setup Guide](SETUP_GUIDE.md)** - GitHub secrets and AWS resource setup
 - **[Product Backlog](PRODUCT_BACKLOG.md)** - Detailed MVP feature list and requirements
 - **[Issues](issues.json)** - Structured JSON data of all planned features
 - **[Scripts](scripts/README.md)** - Utility scripts including GitHub issue creation
@@ -91,7 +103,7 @@ npm start
 ## Tech Stack
 
 - **Backend**: Node.js + TypeScript + Express.js
-- **Database**: SQLite with Prisma ORM (Development) / DynamoDB (AWS Production)
+- **Database**: Amazon DynamoDB (NoSQL)
 - **PDF Generation**: PDFKit
 - **Validation**: Joi
 - **API Docs**: Swagger/OpenAPI
@@ -150,18 +162,17 @@ For more examples, see the [API Documentation](API_README.md).
 npm run dev          # Start dev server with hot reload
 npm run build        # Build TypeScript to JavaScript
 npm start            # Start production server
-npm run prisma:migrate    # Run database migrations
-npm run prisma:studio     # Open Prisma Studio (DB GUI)
 ```
 
 ### Project Structure
 
 ```
 duemate/
-├── prisma/              # Database schema and migrations
 ├── src/
 │   ├── config/         # Configuration (database, swagger)
 │   ├── controllers/    # Request handlers
+│   ├── models/         # Data models and interfaces
+│   ├── repositories/   # DynamoDB data access layer
 │   ├── routes/         # API routes
 │   ├── services/       # Business logic
 │   ├── types/          # TypeScript types

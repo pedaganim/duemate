@@ -8,7 +8,7 @@ A RESTful API for invoice management with PDF generation capabilities.
 - ✅ PDF preview and download functionality
 - ✅ Input validation using Joi
 - ✅ Swagger/OpenAPI documentation
-- ✅ SQLite database with Prisma ORM
+- ✅ Amazon DynamoDB for data storage
 - ✅ No authentication required (public access)
 - ✅ Pagination and filtering support
 - ✅ Professional PDF invoice templates
@@ -17,7 +17,7 @@ A RESTful API for invoice management with PDF generation capabilities.
 
 - **Runtime**: Node.js with TypeScript
 - **Framework**: Express.js
-- **Database**: SQLite with Prisma ORM
+- **Database**: Amazon DynamoDB
 - **PDF Generation**: PDFKit
 - **Validation**: Joi
 - **API Documentation**: Swagger/OpenAPI
@@ -42,12 +42,20 @@ cd duemate
 npm install
 ```
 
-3. Set up the database:
+3. Set up DynamoDB:
 ```bash
-npm run prisma:migrate
+# For local development, see DYNAMODB_SETUP.md for detailed instructions
+# Quick start with Docker:
+docker run -d -p 8000:8000 amazon/dynamodb-local
 ```
 
-4. Start the development server:
+4. Configure environment:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+5. Start the development server:
 ```bash
 npm run dev
 ```
@@ -232,23 +240,21 @@ curl http://localhost:3000/api/invoices/{invoice-id}/download -o invoice.pdf
 - `npm run dev` - Start development server with hot reload
 - `npm run build` - Build TypeScript to JavaScript
 - `npm start` - Start production server
-- `npm run prisma:generate` - Generate Prisma client
-- `npm run prisma:migrate` - Run database migrations
-- `npm run prisma:studio` - Open Prisma Studio (database GUI)
 
 ### Project Structure
 
 ```
 duemate/
-├── prisma/
-│   ├── schema.prisma       # Database schema
-│   └── migrations/         # Database migrations
 ├── src/
 │   ├── config/            # Configuration files
-│   │   ├── database.ts    # Prisma client
+│   │   ├── database.ts    # DynamoDB client
 │   │   └── swagger.ts     # Swagger configuration
 │   ├── controllers/       # Request handlers
 │   │   └── invoice.controller.ts
+│   ├── models/           # Data models
+│   │   └── invoice.model.ts
+│   ├── repositories/     # DynamoDB data access
+│   │   └── invoice.repository.ts
 │   ├── routes/           # API routes
 │   │   └── invoice.routes.ts
 │   ├── services/         # Business logic
