@@ -32,11 +32,10 @@ For **each environment** (dev, staging, production), add:
 
 | Secret Name | Required | Description | Example Value |
 |-------------|----------|-------------|---------------|
-| `DATABASE_URL` | **Yes*** | Database connection string | `postgresql://user:pass@host:5432/db` or `sqlite:./dev.db` |
 | `AWS_REGION` | No | Region override for this environment | `us-west-2` |
 | `S3_BUCKET_NAME` | No | Frontend bucket name override | `duemate-dev-frontend` |
 
-**Note**: `DATABASE_URL` can alternatively be stored in AWS Secrets Manager (see below).
+**Note**: Database connection is handled by DynamoDB. No DATABASE_URL secret is needed.
 
 #### Environment Protection Rules (Recommended)
 
@@ -197,27 +196,6 @@ aws dynamodb create-table \
 
 Create secrets for sensitive third-party credentials:
 
-**Database Connection (Alternative to Environment Secret):**
-
-```bash
-aws secretsmanager create-secret \
-  --name duemate-dev/database \
-  --description "Database connection for dev environment" \
-  --secret-string '{"url":"postgresql://user:pass@host:5432/duemate_dev"}' \
-  --region us-east-1
-
-# Repeat for staging and production
-aws secretsmanager create-secret \
-  --name duemate-staging/database \
-  --secret-string '{"url":"postgresql://user:pass@host:5432/duemate_staging"}' \
-  --region us-east-1
-
-aws secretsmanager create-secret \
-  --name duemate-production/database \
-  --secret-string '{"url":"postgresql://user:pass@host:5432/duemate_production"}' \
-  --region us-east-1
-```
-
 **Stripe API Keys (if using):**
 
 ```bash
@@ -287,9 +265,7 @@ aws ses verify-domain-identity \
   - [ ] Created `production` environment
 
 - [ ] **Environment Secrets Configured**
-  - [ ] Added `DATABASE_URL` to dev environment (or Secrets Manager)
-  - [ ] Added `DATABASE_URL` to staging environment (or Secrets Manager)
-  - [ ] Added `DATABASE_URL` to production environment (or Secrets Manager)
+  - [ ] (Optional) Added environment-specific overrides
 
 - [ ] **Terraform State Backend (Optional)**
   - [ ] Created S3 bucket for Terraform state
@@ -299,7 +275,6 @@ aws ses verify-domain-identity \
   - [ ] Added `TERRAFORM_STATE_BUCKET` to GitHub secrets
 
 - [ ] **AWS Secrets Manager (Optional)**
-  - [ ] Created database secrets (if not using env secrets)
   - [ ] Created Stripe secrets (if using)
   - [ ] Created Twilio secrets (if using)
   - [ ] Created Plaid secrets (if using)
@@ -330,12 +305,7 @@ To get started with minimal setup:
    - `AWS_ROLE_ARN`
    - `AWS_REGION`
 
-2. **GitHub Environment Secrets** (1 per environment):
-   - `dev` environment: `DATABASE_URL`
-   - `staging` environment: `DATABASE_URL`
-   - `production` environment: `DATABASE_URL`
-
-That's it! The workflow will create all other AWS resources automatically using Terraform.
+That's it! The workflow will create all other AWS resources automatically using Terraform, including DynamoDB tables for data storage.
 
 ### AWS Resources Created by Terraform
 
@@ -374,9 +344,9 @@ The workflow will automatically create:
 
 ### "jq: command not found" during migrations
 
-**Cause:** `jq` tool not installed in GitHub Actions runner
+**Cause:** This error is no longer applicable as the project now uses DynamoDB instead of relational databases.
 
-**Solution:** This shouldn't happen as GitHub Actions runners have `jq` pre-installed. If it does, set `DATABASE_URL` directly in environment secrets instead of using Secrets Manager.
+**Solution:** No action needed - database migrations are handled by DynamoDB table creation.
 
 ## Additional Resources
 
