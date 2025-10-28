@@ -1,5 +1,7 @@
 # DueMate
 
+[![Deploy to AWS](https://github.com/pedaganim/duemate/actions/workflows/deploy.yml/badge.svg)](https://github.com/pedaganim/duemate/actions/workflows/deploy.yml)
+
 **Reminders on Invoices** - Automated invoice reminder system to help businesses get paid on time.
 
 ## Overview
