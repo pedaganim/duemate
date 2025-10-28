@@ -80,6 +80,8 @@ jobs:
 
       - name: Run Prisma generate
         run: npm run prisma:generate
+        env:
+          DATABASE_URL: sqlite:./prisma/dev.db
 
       - name: Build TypeScript
         run: npm run build
