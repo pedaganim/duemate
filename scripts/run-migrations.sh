@@ -20,6 +20,14 @@ if [ -z "$DATABASE_URL" ]; then
     
     # Try to get DATABASE_URL from Secrets Manager
     SECRET_NAME="duemate-${ENVIRONMENT}/database"
+    
+    # Check if jq is available
+    if ! command -v jq &> /dev/null; then
+        echo "Error: 'jq' is not installed. Install it to parse JSON from Secrets Manager."
+        echo "Alternatively, set DATABASE_URL environment variable directly."
+        exit 1
+    fi
+    
     DATABASE_URL=$(aws secretsmanager get-secret-value \
         --secret-id "$SECRET_NAME" \
         --query 'SecretString' \

@@ -171,6 +171,13 @@ export async function performHealthCheck(
 export function loadDeploymentConfig(
   environment: string
 ): DeploymentConfig {
+  const allowedEnvironments: DeploymentConfig['environment'][] = ['dev', 'staging', 'production'];
+  if (!allowedEnvironments.includes(environment as DeploymentConfig['environment'])) {
+    throw new Error(
+      `Invalid environment "${environment}". Allowed values are: ${allowedEnvironments.join(', ')}.`
+    );
+  }
+
   const config: DeploymentConfig = {
     environment: environment as DeploymentConfig['environment'],
     region: process.env.AWS_REGION || 'us-east-1',
