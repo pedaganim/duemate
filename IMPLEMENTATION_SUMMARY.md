@@ -108,20 +108,27 @@ interface Invoice {
   clientName: string;
   clientEmail: string;
   clientAddress?: string;
+  clientDetails?: string;
+  customerDetails?: string;
   amount: number;
   currency: string;        // Default: AUD
   issueDate: Date;
   dueDate: Date;
   status: string;          // draft, sent, paid, overdue, cancelled
-  description     String?
-  items           Json?
-  notes           String?
-  taxRate         Float?   @default(0)
-  taxAmount       Float?   @default(0)
-  subtotal        Float
-  total           Float
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  description?: string;
+  items?: any;             // JSON array of line items
+  notes?: string;
+  taxRate?: number;
+  taxAmount?: number;
+  discount?: number;
+  discountAmount?: number;
+  shipping?: number;
+  subtotal: number;
+  total: number;
+  amountPaid?: number;
+  balanceDue?: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
