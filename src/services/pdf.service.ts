@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { Invoice } from '@prisma/client';
+import { Invoice } from '../models/invoice.model';
 import { InvoiceItem } from '../types/invoice.types';
 import { formatCurrency } from '../utils/currency';
 

@@ -1,5 +1,5 @@
-import { Invoice } from '@prisma/client';
-import prisma from '../config/database';
+import { Invoice } from '../models/invoice.model';
+import invoiceRepository from '../repositories/invoice.repository';
 import { CreateInvoiceDTO, UpdateInvoiceDTO, InvoiceQueryParams } from '../types/invoice.types';
 
 export class InvoiceService {
@@ -8,16 +8,10 @@ export class InvoiceService {
    */
   private async generateInvoiceNumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const lastInvoice = await prisma.invoice.findFirst({
-      where: {
-        invoiceNumber: {
-          startsWith: `INV-${year}`,
-        },
-      },
-      orderBy: {
-        invoiceNumber: 'desc',
-      },
-    });
+    const prefix = `INV-${year}`;
+    
+    // Find the last invoice with this year's prefix
+    const lastInvoice = await invoiceRepository.findByInvoiceNumberPrefix(prefix);
 
     let nextNumber = 1;
     if (lastInvoice) {
@@ -34,14 +28,11 @@ export class InvoiceService {
   async createInvoice(data: CreateInvoiceDTO): Promise<Invoice> {
     const invoiceNumber = data.invoiceNumber || (await this.generateInvoiceNumber());
 
-    return prisma.invoice.create({
-      data: {
-        ...data,
-        invoiceNumber,
-        issueDate: data.issueDate ? new Date(data.issueDate) : new Date(),
-        dueDate: new Date(data.dueDate),
-        items: data.items ? JSON.stringify(data.items) : undefined,
-      },
+    return invoiceRepository.create({
+      ...data,
+      invoiceNumber,
+      issueDate: data.issueDate ? new Date(data.issueDate) : new Date(),
+      dueDate: new Date(data.dueDate),
     });
   }
 
@@ -60,53 +51,88 @@ export class InvoiceService {
       sortOrder = 'desc',
     } = params;
 
-    const skip = (page - 1) * limit;
+    let items: Invoice[] = [];
+    let lastEvaluatedKey: any = undefined;
+    let totalCount = 0;
 
-    const where: any = {};
+    // Use GSI for efficient queries when possible
+    if (status && !clientEmail && !startDate && !endDate) {
+      // Query by status using GSI2
+      const result = await invoiceRepository.findByStatus(status, limit * page);
+      items = result.items.slice((page - 1) * limit, page * limit);
+      totalCount = result.items.length;
+    } else if (clientEmail && !status && !startDate && !endDate) {
+      // Query by client email using GSI3
+      const result = await invoiceRepository.findByClientEmail(clientEmail, limit * page);
+      items = result.items.slice((page - 1) * limit, page * limit);
+      totalCount = result.items.length;
+    } else {
+      // Use scan for complex filtering
+      let filterExpression = '';
+      const expressionAttributeValues: any = {};
 
-    if (status) {
-      where.status = status;
-    }
-
-    if (clientEmail) {
-      where.clientEmail = {
-        contains: clientEmail,
-        mode: 'insensitive',
-      };
-    }
-
-    if (startDate || endDate) {
-      where.issueDate = {};
-      if (startDate) {
-        where.issueDate.gte = new Date(startDate);
+      if (status) {
+        filterExpression = 'status = :status';
+        expressionAttributeValues[':status'] = status;
       }
-      if (endDate) {
-        where.issueDate.lte = new Date(endDate);
-      }
-    }
 
-    const [invoices, total] = await Promise.all([
-      prisma.invoice.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-      }),
-      prisma.invoice.count({ where }),
-    ]);
+      if (clientEmail) {
+        if (filterExpression) filterExpression += ' AND ';
+        filterExpression += 'contains(clientEmail, :email)';
+        expressionAttributeValues[':email'] = clientEmail;
+      }
+
+      if (startDate || endDate) {
+        if (startDate) {
+          if (filterExpression) filterExpression += ' AND ';
+          filterExpression += 'issueDate >= :startDate';
+          expressionAttributeValues[':startDate'] = new Date(startDate).toISOString();
+        }
+        if (endDate) {
+          if (filterExpression) filterExpression += ' AND ';
+          filterExpression += 'issueDate <= :endDate';
+          expressionAttributeValues[':endDate'] = new Date(endDate).toISOString();
+        }
+      }
+
+      // Fetch all matching items (DynamoDB scan with filters)
+      const result = await invoiceRepository.findAll(
+        1000, // Max items to scan
+        undefined,
+        filterExpression || undefined,
+        Object.keys(expressionAttributeValues).length > 0 ? expressionAttributeValues : undefined
+      );
+
+      items = result.items;
+      totalCount = items.length;
+
+      // Sort items
+      items.sort((a, b) => {
+        const aVal = (a as any)[sortBy];
+        const bVal = (b as any)[sortBy];
+        
+        if (aVal instanceof Date && bVal instanceof Date) {
+          return sortOrder === 'desc' ? bVal.getTime() - aVal.getTime() : aVal.getTime() - bVal.getTime();
+        }
+        
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          return sortOrder === 'desc' ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
+        }
+        
+        return sortOrder === 'desc' ? bVal - aVal : aVal - bVal;
+      });
+
+      // Paginate
+      items = items.slice((page - 1) * limit, page * limit);
+    }
 
     return {
-      data: invoices.map((invoice) => ({
-        ...invoice,
-        items: invoice.items ? JSON.parse(invoice.items as string) : null,
-      })),
+      data: items,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
       },
     };
   }
@@ -115,52 +141,34 @@ export class InvoiceService {
    * Get a single invoice by ID
    */
   async getInvoiceById(id: string): Promise<Invoice | null> {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-    });
-
-    if (!invoice) {
-      return null;
-    }
-
-    return {
-      ...invoice,
-      items: invoice.items ? JSON.parse(invoice.items as string) : null,
-    } as Invoice;
+    return invoiceRepository.findById(id);
   }
 
   /**
    * Update an invoice
    */
   async updateInvoice(id: string, data: UpdateInvoiceDTO): Promise<Invoice> {
-    return prisma.invoice.update({
-      where: { id },
-      data: {
-        ...data,
-        issueDate: data.issueDate ? new Date(data.issueDate) : undefined,
-        dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-        items: data.items ? JSON.stringify(data.items) : undefined,
-      },
-    });
+    const updateData: Partial<Invoice> = {
+      ...data,
+      issueDate: data.issueDate ? new Date(data.issueDate) : undefined,
+      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+    };
+    
+    return invoiceRepository.update(id, updateData);
   }
 
   /**
    * Delete an invoice
    */
-  async deleteInvoice(id: string): Promise<Invoice> {
-    return prisma.invoice.delete({
-      where: { id },
-    });
+  async deleteInvoice(id: string): Promise<void> {
+    await invoiceRepository.delete(id);
   }
 
   /**
    * Check if invoice exists
    */
   async invoiceExists(id: string): Promise<boolean> {
-    const count = await prisma.invoice.count({
-      where: { id },
-    });
-    return count > 0;
+    return invoiceRepository.exists(id);
   }
 }
 
