@@ -10,8 +10,7 @@ Navigate to: **Settings → Secrets and variables → Actions → Secrets → Ne
 
 | Secret Name | Required | Description | Example Value | Where to Get |
 |-------------|----------|-------------|---------------|--------------|
-| `AWS_ACCESS_KEY_ID` | **Yes** | AWS IAM access key ID | `AKIAIOSFODNN7EXAMPLE` | AWS IAM Console → Users → Security credentials |
-| `AWS_SECRET_ACCESS_KEY` | **Yes** | AWS IAM secret access key | `wJalrXUtnFEMI/K7MDENG/bPxRfi...` | AWS IAM Console → Users → Security credentials |
+| `AWS_ROLE_ARN` | **Yes** | AWS IAM role ARN for OIDC | `arn:aws:iam::123456789012:role/GitHubActionsRole` | Create IAM role (see below) |
 | `AWS_REGION` | **Yes** | AWS region for deployment | `us-east-1` | Choose your preferred region |
 | `TERRAFORM_STATE_BUCKET` | No | S3 bucket for Terraform state | `duemate-terraform-state` | Create S3 bucket first (see below) |
 
@@ -56,21 +55,60 @@ For **each environment** (dev, staging, production), add:
 
 ## Required AWS Resources (One-Time Setup)
 
-### 1. IAM User for GitHub Actions
+### 1. IAM Role for GitHub Actions (OIDC)
 
-**Create IAM User:**
+**Step 1: Create an OIDC Identity Provider**
 
-1. Go to **IAM Console → Users → Create user**
-2. User name: `github-actions-duemate`
-3. Select: **Programmatic access**
-4. Click **Next**
+1. Go to **IAM Console → Identity providers → Add provider**
+2. Select **OpenID Connect**
+3. **Provider URL**: `https://token.actions.githubusercontent.com`
+4. **Audience**: `sts.amazonaws.com`
+5. Click **Add provider**
 
-**Attach Permissions:**
+**Step 2: Create IAM Role**
+
+1. Go to **IAM Console → Roles → Create role**
+2. Select **Web identity**
+3. **Identity provider**: Choose the GitHub OIDC provider you just created
+4. **Audience**: `sts.amazonaws.com`
+5. Click **Next**
+
+**Step 3: Add Trust Policy**
+
+Edit the trust policy to restrict to your repository:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:pedaganim/duemate:*"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Step 4: Attach Permissions**
 
 Option A - Use Administrator Access (quick setup):
 - Attach policy: `AdministratorAccess`
 
 Option B - Use Custom Policy (recommended for production):
+
+Create a custom policy with these permissions:
+
 ```json
 {
   "Version": "2012-10-17",
@@ -104,9 +142,10 @@ Option B - Use Custom Policy (recommended for production):
 }
 ```
 
-**Save Credentials:**
-- Copy **Access Key ID** → Add to GitHub secret `AWS_ACCESS_KEY_ID`
-- Copy **Secret Access Key** → Add to GitHub secret `AWS_SECRET_ACCESS_KEY`
+**Step 5: Save Role ARN**
+
+1. After creating the role, copy the **Role ARN** (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
+2. Add it to GitHub secret `AWS_ROLE_ARN`
 
 ### 2. S3 Bucket for Terraform State (Optional but Recommended)
 
@@ -235,11 +274,11 @@ aws ses verify-domain-identity \
 
 ### Before First Deployment
 
-- [ ] **AWS IAM User Created**
-  - [ ] Access keys generated
+- [ ] **AWS IAM Role Created (OIDC)**
+  - [ ] OIDC identity provider created for GitHub Actions
+  - [ ] IAM role created with trust policy for your repository
   - [ ] Permissions attached (Administrator or custom policy)
-  - [ ] Added `AWS_ACCESS_KEY_ID` to GitHub secrets
-  - [ ] Added `AWS_SECRET_ACCESS_KEY` to GitHub secrets
+  - [ ] Added `AWS_ROLE_ARN` to GitHub secrets
   - [ ] Added `AWS_REGION` to GitHub secrets
 
 - [ ] **GitHub Environments Created**
@@ -287,9 +326,8 @@ git push origin develop
 
 To get started with minimal setup:
 
-1. **GitHub Repository Secrets** (3 required):
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
+1. **GitHub Repository Secrets** (2 required):
+   - `AWS_ROLE_ARN`
    - `AWS_REGION`
 
 2. **GitHub Environment Secrets** (1 per environment):
@@ -322,8 +360,9 @@ The workflow will automatically create:
 
 **Solution:**
 1. Verify secrets are set: Settings → Secrets and variables → Actions
-2. Check secret names match exactly: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
-3. Verify IAM user has required permissions
+2. Check secret names match exactly: `AWS_ROLE_ARN`, `AWS_REGION`
+3. Verify IAM role exists and has correct trust policy
+4. Verify OIDC provider is configured in AWS IAM
 
 ### "Error: error creating DynamoDB Table: ResourceInUseException"
 

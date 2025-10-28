@@ -12,8 +12,7 @@ Navigate to: Settings → Secrets and variables → Actions
 
 | Secret Name | Description | Example Value |
 |-------------|-------------|---------------|
-| `AWS_ACCESS_KEY_ID` | AWS IAM user access key | `AKIAIOSFODNN7EXAMPLE` |
-| `AWS_SECRET_ACCESS_KEY` | AWS IAM secret access key | `wJalrXUtnFEMI/K7MDENG/bPxRfi...` |
+| `AWS_ROLE_ARN` | AWS IAM role ARN for OIDC authentication | `arn:aws:iam::123456789012:role/GitHubActionsRole` |
 | `AWS_REGION` | AWS region for deployment | `us-east-1` |
 | `TERRAFORM_STATE_BUCKET` | S3 bucket for Terraform state (optional) | `duemate-terraform-state` |
 
@@ -54,13 +53,44 @@ Navigate to: Settings → Environments → [Create/Edit Environment]
 - **Deployment branches**: `main` branch only
 - **Prevent self-review**: Enabled
 
-## IAM User Permissions
+## IAM Role Setup (OIDC Authentication)
 
-The IAM user associated with `AWS_ACCESS_KEY_ID` requires the following permissions:
+The workflow uses OpenID Connect (OIDC) for secure authentication with AWS, eliminating the need for long-lived access keys.
 
-### Minimum Required Permissions
+### Setting Up OIDC Provider
 
-Create a custom IAM policy with these permissions:
+1. **Create OIDC Identity Provider in AWS IAM:**
+   - Provider URL: `https://token.actions.githubusercontent.com`
+   - Audience: `sts.amazonaws.com`
+
+2. **Create IAM Role with Trust Policy:**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:pedaganim/duemate:*"
+        }
+      }
+    }
+  ]
+}
+```
+
+### Required IAM Role Permissions
+
+Attach a custom policy with these permissions to the IAM role:
 
 ```json
 {
@@ -84,6 +114,8 @@ Create a custom IAM policy with these permissions:
         "iam:AttachRolePolicy",
         "iam:DetachRolePolicy",
         "iam:PassRole",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
         "secretsmanager:GetSecretValue",
         "secretsmanager:CreateSecret",
         "secretsmanager:UpdateSecret"
@@ -94,39 +126,49 @@ Create a custom IAM policy with these permissions:
 }
 ```
 
-### Best Practice: Use OIDC Instead
+### Workflow Configuration
 
-For enhanced security, consider using OpenID Connect (OIDC) instead of long-lived credentials:
-
-1. Create an IAM OIDC identity provider for GitHub
-2. Create an IAM role with trust policy for GitHub Actions
-3. Update workflow to use `aws-actions/configure-aws-credentials@v4` with `role-to-assume`
-
-Example workflow configuration:
+The workflow is already configured to use OIDC:
 
 ```yaml
-- name: Configure AWS credentials
-  uses: aws-actions/configure-aws-credentials@v4
-  with:
-    role-to-assume: arn:aws:iam::123456789012:role/GitHubActionsRole
-    aws-region: us-east-1
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
 ```
 
 ## Security Best Practices
 
-### 1. Secret Rotation
+### 1. OIDC Benefits
 
-- Rotate AWS credentials every 90 days
-- Update GitHub secrets immediately after rotation
-- Use AWS IAM Access Analyzer to identify unused credentials
+Using OIDC instead of long-lived access keys provides:
+- **No long-lived credentials** - Temporary credentials expire automatically
+- **Reduced attack surface** - No access keys to leak or rotate
+- **Better auditability** - CloudTrail logs show which GitHub workflow made requests
+- **Fine-grained access** - Trust policy can restrict to specific repositories and branches
 
-### 2. Least Privilege
+### 2. Secret Rotation
+
+- IAM role credentials rotate automatically with OIDC
+- Review and update IAM role permissions periodically
+- Audit trust policies to ensure they're not overly permissive
+
+### 3. Least Privilege
 
 - Grant only necessary permissions
-- Use separate IAM users/roles for each environment
+- Use separate IAM roles for each environment
 - Regularly review and audit IAM policies
+- Restrict trust policy to specific repository
 
-### 3. Secret Storage
+### 4. Secret Storage
 
 - **Never** commit secrets to the repository
 - Use AWS Secrets Manager for sensitive data
@@ -155,7 +197,7 @@ The workflows use minimal permissions:
 ```yaml
 permissions:
   contents: read
-  id-token: write  # Only if using OIDC
+  id-token: write  # Required for OIDC authentication
 ```
 
 ## Monitoring and Alerts
@@ -169,18 +211,16 @@ permissions:
 ### AWS Monitoring
 
 - Enable CloudWatch alarms
-- Monitor CloudTrail logs
+- Monitor CloudTrail logs for AssumeRoleWithWebIdentity events
 - Set up AWS Config rules
 - Use AWS Security Hub
 
 ## Incident Response
 
-If credentials are compromised:
+If the IAM role is compromised:
 
-1. **Immediately**: Disable the IAM access key
-2. **Create**: New IAM access key
-3. **Update**: GitHub secrets with new credentials
-4. **Review**: CloudTrail logs for unauthorized activity
+1. **Immediately**: Update the trust policy to remove compromised repository access
+2. **Review**: CloudTrail logs for unauthorized AssumeRoleWithWebIdentity activity
 5. **Rotate**: All other affected credentials
 6. **Document**: Incident and response
 
