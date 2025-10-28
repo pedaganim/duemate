@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Custom Properties for theme colors */
+/* These variables are used in Tailwind config via var(--background) and var(--foreground) */
 :root {
   --background: #ffffff;
   --foreground: #171717;

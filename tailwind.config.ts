@@ -9,6 +9,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // These reference CSS custom properties defined in globals.css
+        // They automatically adapt to light/dark mode via prefers-color-scheme
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
