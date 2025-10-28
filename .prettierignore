@@ -1,0 +1,37 @@
+# Ignore pre-existing backend API files (not part of Next.js setup)
+src/config/
+src/controllers/
+src/routes/
+src/services/
+src/types/
+src/utils/
+src/index.ts
+src/app.ts
+
+# Ignore pre-existing documentation and markdown files
+terraform/
+TESTING_RESULTS.md
+API_README.md
+DELIVERABLE_SUMMARY.md
+EXAMPLES.md
+FEATURE_CHECKLIST.md
+IMPLEMENTATION_SUMMARY.md
+PRODUCT_BACKLOG.md
+scripts/README.md
+
+# Ignore generated files
+node_modules/
+.next/
+dist/
+build/
+out/
+coverage/
+
+# Ignore lock files and logs
+package-lock.json
+*.log
+
+# Ignore environment files
+.env
+.env.*
+!.env.example

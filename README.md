@@ -12,6 +12,7 @@ DueMate is a modern invoice management and automated reminder system designed to
 ## 🚀 Features
 
 ### Current Features (MVP)
+
 - ✅ **Modern Landing Page** - Professional, responsive landing page built with Next.js 14+ and Tailwind CSS
 - ✅ **Invoice Management** - Full CRUD operations (Create, Read, Update, Delete)
 - ✅ **PDF Generation** - Professional invoice PDF templates
@@ -23,12 +24,14 @@ DueMate is a modern invoice management and automated reminder system designed to
 - ✅ **No Authentication Required** - Public API access (as per MVP requirements)
 
 ### Coming Soon
+
 - 👥 **Client Management** - Manage client information and payment terms
 - ⏰ **Automated Reminders** - Schedule and send email reminders for due invoices
 - 📊 **Dashboard** - Quick overview of invoice status and upcoming reminders
 - 🔐 **Authentication** - User accounts and secure access
 
 ### Future Features
+
 - 🏦 **Bank Sync** - Automatic payment tracking via bank account integration
 - 🎙️ **AI Voice Reminders** - AI-powered voice call reminders
 - 🏷️ **Whitelabel** - Multi-tenant support for reselling
@@ -36,6 +39,7 @@ DueMate is a modern invoice management and automated reminder system designed to
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Next.js 14+** - React framework with App Router
 - **React 19** - UI library
 - **TypeScript** - Type safety
@@ -43,6 +47,7 @@ DueMate is a modern invoice management and automated reminder system designed to
 - **Vercel** - Deployment platform
 
 ### Backend
+
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web framework
 - **TypeScript** - Type safety
@@ -62,40 +67,48 @@ DueMate is a modern invoice management and automated reminder system designed to
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/pedaganim/duemate.git
    cd duemate
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
 4. **Set up the database**
+
    ```bash
    npm run prisma:migrate
    npm run prisma:generate
    ```
 
 5. **Start the development servers**
-   
+
    **Option 1: Start Next.js frontend**
+
    ```bash
    npm run dev
    ```
+
    Frontend will be available at: http://localhost:3000
-   
+
    **Option 2: Start Express.js API backend**
+
    ```bash
    npm run api:dev
    ```
+
    API will be available at: http://localhost:3000
    - Swagger Documentation: http://localhost:3000/api-docs
    - Health Check: http://localhost:3000/health
@@ -240,6 +253,7 @@ DueMate is designed to be deployed on Vercel for the Next.js frontend and can us
 ### Manual Deployment
 
 See the comprehensive [Deployment Guide](docs/deployment.md) for:
+
 - Step-by-step Vercel deployment
 - Custom domain setup (duemate.org)
 - Environment variable configuration
