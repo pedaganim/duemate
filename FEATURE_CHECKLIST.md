@@ -139,8 +139,8 @@ Interactive documentation available at /api-docs
 # Install
 npm install
 
-# Setup database
-npm run prisma:migrate
+# Setup DynamoDB (for local development)
+# See DYNAMODB_SETUP.md for detailed instructions
 
 # Start development server
 npm run dev

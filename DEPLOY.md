@@ -353,9 +353,6 @@ terraform output > ../outputs.txt
 # Install dependencies
 npm install
 
-# Generate Prisma client
-npm run prisma:generate
-
 # Build TypeScript
 npm run build
 ```
@@ -527,11 +524,12 @@ ls -la frontend/
 
 **Solution**:
 ```bash
-# Test database connection
-npx prisma db pull --schema=./prisma/schema.prisma
+# Test DynamoDB connection
+aws dynamodb list-tables --region $AWS_REGION
 
-# Verify DATABASE_URL format
-echo $DATABASE_URL
+# Verify DynamoDB configuration
+echo "Table: $TABLE_NAME"
+echo "Region: $AWS_REGION"
 ```
 
 ### Debug Commands
@@ -601,13 +599,11 @@ terraform apply
 **Warning**: Database rollbacks can be complex and may cause data loss.
 
 ```bash
-# View migration history
-npx prisma migrate status
+# View DynamoDB table status
+aws dynamodb describe-table --table-name $TABLE_NAME --region $AWS_REGION
 
-# Rollback last migration (manual process)
-# 1. Backup database first
-# 2. Manually create reverse migration
-# 3. Apply reverse migration
+# DynamoDB doesn't require migrations
+# Data model changes are handled at the application level
 ```
 
 ### Emergency Rollback

@@ -85,15 +85,13 @@ duemate/
 │   │   └── validation.ts         # Joi validation schemas
 │   ├── app.ts                    # Express application
 │   └── index.ts                  # Server entry point
-├── prisma/
-│   ├── schema.prisma            # Database schema
-│   └── migrations/              # Database migrations
 ├── .env                         # Environment variables
 ├── .gitignore                   # Git ignore rules
 ├── package.json                 # Dependencies
 ├── tsconfig.json                # TypeScript config
 ├── README.md                    # Main documentation
 ├── API_README.md                # API reference
+├── DYNAMODB_SETUP.md            # DynamoDB setup guide
 ├── EXAMPLES.md                  # Usage examples
 ├── TESTING_RESULTS.md           # Test results
 └── test-api.sh                  # Test script
@@ -101,18 +99,20 @@ duemate/
 
 ## Database Schema
 
-```prisma
-model Invoice {
-  id              String   @id @default(uuid())
-  invoiceNumber   String   @unique
-  clientName      String
-  clientEmail     String
-  clientAddress   String?
-  amount          Float
-  currency        String   @default("USD")
-  issueDate       DateTime @default(now())
-  dueDate         DateTime
-  status          String   @default("draft")
+DueMate uses Amazon DynamoDB with the following structure:
+
+```typescript
+interface Invoice {
+  id: string;              // UUID
+  invoiceNumber: string;   // Format: INV-YYYY-#####
+  clientName: string;
+  clientEmail: string;
+  clientAddress?: string;
+  amount: number;
+  currency: string;        // Default: AUD
+  issueDate: Date;
+  dueDate: Date;
+  status: string;          // draft, sent, paid, overdue, cancelled
   description     String?
   items           Json?
   notes           String?
@@ -188,7 +188,6 @@ model Invoice {
 - `test-api.sh` - Automated test suite
 - `npm run dev` - Development server
 - `npm run build` - Production build
-- `npm run prisma:migrate` - Database migrations
 
 ## How to Use
 
@@ -197,7 +196,7 @@ model Invoice {
 git clone https://github.com/pedaganim/duemate.git
 cd duemate
 npm install
-npm run prisma:migrate
+# See DYNAMODB_SETUP.md for DynamoDB setup
 ```
 
 ### Start Server
