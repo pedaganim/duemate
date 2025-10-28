@@ -52,20 +52,55 @@ export class InvoiceService {
     } = params;
 
     let items: Invoice[] = [];
-    let lastEvaluatedKey: any = undefined;
     let totalCount = 0;
 
     // Use GSI for efficient queries when possible
     if (status && !clientEmail && !startDate && !endDate) {
-      // Query by status using GSI2
-      const result = await invoiceRepository.findByStatus(status, limit * page);
-      items = result.items.slice((page - 1) * limit, page * limit);
-      totalCount = result.items.length;
+      // Query by status using GSI2 with proper pagination
+      let lastEvaluatedKey: any = undefined;
+      let currentPage = 1;
+      
+      while (currentPage <= page) {
+        const result = await invoiceRepository.findByStatus(status, limit, lastEvaluatedKey);
+        
+        if (currentPage === page) {
+          items = result.items;
+        }
+        
+        lastEvaluatedKey = result.lastEvaluatedKey;
+        
+        if (!lastEvaluatedKey || result.items.length === 0) {
+          break;
+        }
+        
+        currentPage++;
+      }
+      
+      // Approximate total count (DynamoDB doesn't provide exact totals efficiently)
+      totalCount = (page - 1) * limit + items.length;
     } else if (clientEmail && !status && !startDate && !endDate) {
-      // Query by client email using GSI3
-      const result = await invoiceRepository.findByClientEmail(clientEmail, limit * page);
-      items = result.items.slice((page - 1) * limit, page * limit);
-      totalCount = result.items.length;
+      // Query by client email using GSI3 with proper pagination
+      let lastEvaluatedKey: any = undefined;
+      let currentPage = 1;
+      
+      while (currentPage <= page) {
+        const result = await invoiceRepository.findByClientEmail(clientEmail, limit, lastEvaluatedKey);
+        
+        if (currentPage === page) {
+          items = result.items;
+        }
+        
+        lastEvaluatedKey = result.lastEvaluatedKey;
+        
+        if (!lastEvaluatedKey || result.items.length === 0) {
+          break;
+        }
+        
+        currentPage++;
+      }
+      
+      // Approximate total count
+      totalCount = (page - 1) * limit + items.length;
     } else {
       // Use scan for complex filtering
       let filterExpression = '';

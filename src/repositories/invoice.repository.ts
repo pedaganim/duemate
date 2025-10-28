@@ -326,6 +326,27 @@ export class InvoiceRepository {
       expressionAttributeValues[statusAttrValue] = `STATUS#${data.status}`;
     }
 
+    if (data.clientEmail) {
+      const emailPkAttrName = `#gsi3pk`;
+      const emailPkAttrValue = `:gsi3pk`;
+      updateExpressions.push(`${emailPkAttrName} = ${emailPkAttrValue}`);
+      expressionAttributeNames[emailPkAttrName] = 'GSI3PK';
+      expressionAttributeValues[emailPkAttrValue] = `CLIENT_EMAIL#${data.clientEmail}`;
+    }
+
+    if (data.invoiceNumber) {
+      const invNumPkAttrName = `#gsi1pk`;
+      const invNumPkAttrValue = `:gsi1pk`;
+      const invNumSkAttrName = `#gsi1sk`;
+      const invNumSkAttrValue = `:gsi1sk`;
+      updateExpressions.push(`${invNumPkAttrName} = ${invNumPkAttrValue}`);
+      updateExpressions.push(`${invNumSkAttrName} = ${invNumSkAttrValue}`);
+      expressionAttributeNames[invNumPkAttrName] = 'GSI1PK';
+      expressionAttributeNames[invNumSkAttrName] = 'GSI1SK';
+      expressionAttributeValues[invNumPkAttrValue] = `INVOICE_NUMBER#${data.invoiceNumber}`;
+      expressionAttributeValues[invNumSkAttrValue] = `INVOICE_NUMBER#${data.invoiceNumber}`;
+    }
+
     const result = await ddbDocClient.send(
       new UpdateCommand({
         TableName: this.tableName,
@@ -392,16 +413,17 @@ export class InvoiceRepository {
    * Find invoices with invoice number starting with prefix
    */
   async findByInvoiceNumberPrefix(prefix: string): Promise<Invoice | null> {
+    // Use Scan with FilterExpression since begins_with cannot be used in KeyConditionExpression
+    // For better performance, we could restructure to use Query with range key conditions
     const result = await ddbDocClient.send(
-      new QueryCommand({
+      new ScanCommand({
         TableName: this.tableName,
-        IndexName: 'GSI1',
-        KeyConditionExpression: 'begins_with(GSI1PK, :prefix)',
+        FilterExpression: 'entityType = :entityType AND begins_with(GSI1PK, :prefix)',
         ExpressionAttributeValues: {
+          ':entityType': 'INVOICE',
           ':prefix': `INVOICE_NUMBER#${prefix}`,
         },
-        Limit: 1,
-        ScanIndexForward: false, // Get the most recent one
+        Limit: 100, // Scan with limit to find matching items
       })
     );
 
@@ -409,7 +431,11 @@ export class InvoiceRepository {
       return null;
     }
 
-    return this.fromDynamoDBItem(result.Items[0] as InvoiceDynamoDBItem);
+    // Sort by invoice number descending to get the most recent
+    const items = result.Items.map((item) => this.fromDynamoDBItem(item as InvoiceDynamoDBItem));
+    items.sort((a, b) => b.invoiceNumber.localeCompare(a.invoiceNumber));
+    
+    return items[0];
   }
 }
 
