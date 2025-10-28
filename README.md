@@ -80,17 +80,22 @@ npm start
 ## Documentation
 
 - **[API Documentation](API_README.md)** - Complete API reference with examples
+- **[Deployment Guide](DEPLOY.md)** - Comprehensive AWS deployment instructions with CI/CD
 - **[Product Backlog](PRODUCT_BACKLOG.md)** - Detailed MVP feature list and requirements
 - **[Issues](issues.json)** - Structured JSON data of all planned features
 - **[Scripts](scripts/README.md)** - Utility scripts including GitHub issue creation
+- **[Terraform Infrastructure](terraform/README.md)** - Infrastructure as Code documentation
 
 ## Tech Stack
 
 - **Backend**: Node.js + TypeScript + Express.js
-- **Database**: SQLite with Prisma ORM
+- **Database**: SQLite with Prisma ORM (Development) / DynamoDB (AWS Production)
 - **PDF Generation**: PDFKit
 - **Validation**: Joi
 - **API Docs**: Swagger/OpenAPI
+- **Infrastructure**: Terraform
+- **Cloud**: AWS (Lambda, API Gateway, DynamoDB, S3, CloudFront, SQS, EventBridge)
+- **CI/CD**: GitHub Actions
 
 ## Usage Examples
 
@@ -165,6 +170,44 @@ duemate/
 ├── package.json
 └── tsconfig.json
 ```
+
+## Deployment
+
+DueMate supports automated deployment to AWS using GitHub Actions and Terraform.
+
+### Quick Deployment
+
+1. **Configure GitHub Secrets** (required):
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_REGION`
+
+2. **Deploy to AWS**:
+   ```bash
+   # Automatic deployment
+   git push origin main          # Deploy to production
+   git push origin staging       # Deploy to staging
+   git push origin develop       # Deploy to development
+   
+   # Or use GitHub Actions UI for manual deployment
+   ```
+
+3. **Access your deployed API**:
+   - Check GitHub Actions summary for API endpoint
+   - Or view Terraform outputs: `cd terraform && terraform output`
+
+### Infrastructure
+
+The AWS infrastructure includes:
+- **Lambda Functions** - Serverless API handlers
+- **DynamoDB** - NoSQL database for invoices and clients
+- **API Gateway** - REST API endpoints
+- **S3 + CloudFront** - Static file hosting
+- **SQS** - Message queues for notifications
+- **EventBridge** - Scheduled reminder checks
+- **CloudWatch** - Logging and monitoring
+
+For detailed deployment instructions, see **[DEPLOY.md](DEPLOY.md)**.
 
 ## Roadmap
 
