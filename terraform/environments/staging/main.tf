@@ -13,9 +13,9 @@ module "duemate" {
   enable_dynamodb_encryption = true
 
   # Lambda Configuration
-  lambda_runtime          = "nodejs20.x"
-  lambda_memory_size      = 512
-  lambda_timeout          = 30
+  lambda_runtime            = "nodejs20.x"
+  lambda_memory_size        = 512
+  lambda_timeout            = 30
   lambda_log_retention_days = 7
 
   # API Gateway Configuration
@@ -26,12 +26,12 @@ module "duemate" {
 
   # Cognito Configuration
   cognito_password_minimum_length = 12
-  enable_cognito_mfa             = "OPTIONAL"
+  enable_cognito_mfa              = "OPTIONAL"
 
   # S3 and CloudFront Configuration
-  enable_cloudfront     = true
+  enable_cloudfront      = true
   cloudfront_price_class = "PriceClass_100"
-  enable_s3_versioning  = false  # Disabled to save costs
+  enable_s3_versioning   = false # Disabled to save costs
 
   # Monitoring Configuration
   enable_monitoring = true
@@ -41,15 +41,15 @@ module "duemate" {
   reminder_check_schedule = "rate(1 hour)"
 
   # SQS Configuration
-  sqs_message_retention_seconds  = 345600  # 4 days
-  sqs_visibility_timeout_seconds = 300     # 5 minutes
+  sqs_message_retention_seconds  = 345600 # 4 days
+  sqs_visibility_timeout_seconds = 300    # 5 minutes
 
   # VPC Configuration (disabled)
   enable_vpc = false
 
   # Additional tags
   additional_tags = {
-    CostCenter  = "Staging"
-    Owner       = "DevOps"
+    CostCenter = "Staging"
+    Owner      = "DevOps"
   }
 }

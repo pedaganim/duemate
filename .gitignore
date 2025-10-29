@@ -44,3 +44,10 @@ temp/
 
 # Production
 build/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+tfplan

@@ -122,30 +122,33 @@ output "cloudwatch_dashboard_name" {
 output "stripe_secret_arn" {
   description = "ARN of the Stripe secret in Secrets Manager"
   value       = var.stripe_api_key != null ? aws_secretsmanager_secret.stripe[0].arn : null
+  sensitive   = true
 }
 
 output "twilio_secret_arn" {
   description = "ARN of the Twilio secret in Secrets Manager"
   value       = var.twilio_account_sid != null && var.twilio_auth_token != null ? aws_secretsmanager_secret.twilio[0].arn : null
+  sensitive   = true
 }
 
 output "plaid_secret_arn" {
   description = "ARN of the Plaid secret in Secrets Manager"
   value       = var.plaid_client_id != null && var.plaid_secret != null ? aws_secretsmanager_secret.plaid[0].arn : null
+  sensitive   = true
 }
 
 # General Deployment Info
 output "deployment_summary" {
   description = "Summary of the deployment"
   value = {
-    project_name     = var.project_name
-    environment      = var.environment
-    customer_name    = var.customer_name
-    aws_region       = var.aws_region
-    custom_domain    = var.custom_domain
-    api_endpoint     = module.api_gateway.api_endpoint
-    frontend_url     = var.enable_cloudfront ? "https://${module.cloudfront[0].distribution_domain_name}" : module.s3.frontend_bucket_website_endpoint
-    dynamodb_table   = module.dynamodb.table_name
-    user_pool_id     = module.cognito.user_pool_id
+    project_name   = var.project_name
+    environment    = var.environment
+    customer_name  = var.customer_name
+    aws_region     = var.aws_region
+    custom_domain  = var.custom_domain
+    api_endpoint   = module.api_gateway.api_endpoint
+    frontend_url   = var.enable_cloudfront ? "https://${module.cloudfront[0].distribution_domain_name}" : module.s3.frontend_bucket_website_endpoint
+    dynamodb_table = module.dynamodb.table_name
+    user_pool_id   = module.cognito.user_pool_id
   }
 }

@@ -1,9 +1,9 @@
 # DynamoDB Table with Single-Table Design
 resource "aws_dynamodb_table" "main" {
-  name           = var.table_name
-  billing_mode   = var.billing_mode
-  hash_key       = "PK"
-  range_key      = "SK"
+  name         = var.table_name
+  billing_mode = var.billing_mode
+  hash_key     = "PK"
+  range_key    = "SK"
 
   # Only set capacity if using PROVISIONED mode
   read_capacity  = var.billing_mode == "PROVISIONED" ? var.read_capacity : null
