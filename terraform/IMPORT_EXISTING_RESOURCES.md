@@ -1,6 +1,6 @@
 # Importing Existing AWS Resources into Terraform
 
-This guide explains how to import existing AWS resources into Terraform state when you encounter "EntityAlreadyExists" or "ResourceAlreadyExists" errors during deployment.
+This guide explains how existing AWS resources are automatically imported into Terraform state to prevent "EntityAlreadyExists" or "ResourceAlreadyExists" errors during deployment.
 
 ## Problem
 
@@ -17,83 +17,60 @@ These errors occur when:
 2. Terraform state was lost or corrupted
 3. Resources exist from a previous deployment
 
-## Solution
+## Automatic Import Solution (Recommended)
 
-### Option 1: Import Resources (Terraform 1.5+)
+**This repository now includes automatic import configuration!**
 
-For Terraform 1.5 and later, you can use import blocks:
+The `terraform/import.tf` file contains import blocks that automatically import existing resources during `terraform plan` or `terraform apply`. This is supported in Terraform 1.5.0+ (this repository requires 1.5.0+).
 
-#### 1. Create Import Configuration
+### How It Works
 
-Create a file `terraform/import.tf`:
+1. When you run `terraform plan` or `terraform apply`, Terraform checks each import block
+2. If the resource exists in AWS but not in the state file, it imports it automatically
+3. If the resource doesn't exist in AWS, Terraform creates it normally
+4. If the resource is already in state, the import block is skipped
 
-```hcl
-# Import IAM Role
-import {
-  to = aws_iam_role.lambda_execution
-  id = "duemate-production-lambda-execution"
-}
+### Covered Resources
 
-# Import IAM Policies
-import {
-  to = aws_iam_policy.lambda_sqs
-  id = "arn:aws:iam::ACCOUNT_ID:policy/duemate-production-lambda-sqs"
-}
+The following resources are automatically imported if they exist:
+- IAM Role: `lambda_execution`
+- IAM Policies: `lambda_dynamodb`, `lambda_s3`, `lambda_sqs`, `lambda_ses`, `lambda_secrets`
+- IAM Role: `api_gateway_cloudwatch` (conditional)
+- CloudWatch Log Group: API Gateway (conditional)
+- Cognito User Pool Domain
+- DynamoDB Table
+- S3 Buckets: `frontend`, `invoices`, `assets`
 
-import {
-  to = aws_iam_policy.lambda_ses
-  id = "arn:aws:iam::ACCOUNT_ID:policy/duemate-production-lambda-ses"
-}
+### No Action Required
 
-import {
-  to = aws_iam_policy.lambda_secrets
-  id = "arn:aws:iam::ACCOUNT_ID:policy/duemate-production-lambda-secrets"
-}
-
-# Import CloudWatch Log Group
-import {
-  to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
-  id = "/aws/apigateway/duemate-production-api"
-}
-
-# Import Cognito User Pool Domain
-import {
-  to = module.cognito.aws_cognito_user_pool_domain.main
-  id = "duemate-production-users"
-}
-
-# Import DynamoDB Table
-import {
-  to = module.dynamodb.aws_dynamodb_table.main
-  id = "duemate-production-main"
-}
-
-# Import S3 Buckets
-import {
-  to = module.s3.aws_s3_bucket.frontend
-  id = "duemate-production-frontend"
-}
-
-import {
-  to = module.s3.aws_s3_bucket.invoices
-  id = "duemate-production-invoices"
-}
-
-import {
-  to = module.s3.aws_s3_bucket.assets
-  id = "duemate-production-assets"
-}
-```
-
-#### 2. Run Terraform Plan with Import
+Simply run your normal Terraform commands:
 
 ```bash
 cd terraform
-terraform plan -generate-config-out=generated.tf
+terraform init
+terraform plan
 terraform apply
 ```
 
-### Option 2: Manual Import (All Terraform Versions)
+The import will happen automatically during plan/apply if needed.
+
+## Manual Import (Alternative Method)
+
+If you need to import resources manually or the automatic import doesn't work, you have these options:
+
+### Option 1: Use the Import Script
+
+A bash script is provided for manual imports:
+
+```bash
+cd terraform
+chmod +x import-resources.sh
+./import-resources.sh production duemate
+```
+
+This script will import all resources that exist in AWS but are not in the Terraform state.
+
+### Option 2: Manual Terraform Import Commands
 
 For each resource that already exists, run the import command:
 
@@ -314,8 +291,27 @@ terraform import aws_iam_role.lambda_execution duemate-production-lambda-executi
 Check Terraform documentation for the correct import ID format:
 - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
 
+### Automatic Import Not Working
+
+If the automatic import blocks in `import.tf` are not working:
+
+1. Ensure you're using Terraform 1.5.0 or later:
+   ```bash
+   terraform version
+   ```
+
+2. Check that the resource names in `import.tf` match your configuration
+
+3. Try running with verbose logging:
+   ```bash
+   TF_LOG=DEBUG terraform plan
+   ```
+
+4. Fall back to manual import using the script or commands above
+
 ## References
 
 - [Terraform Import Documentation](https://developer.hashicorp.com/terraform/cli/import)
+- [Terraform Import Blocks (1.5+)](https://developer.hashicorp.com/terraform/language/import)
 - [AWS Provider Import Guide](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 - [Terraform State Management](https://developer.hashicorp.com/terraform/language/state)
