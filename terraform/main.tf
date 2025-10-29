@@ -83,6 +83,10 @@ resource "aws_iam_role" "lambda_execution" {
   })
 
   tags = local.common_tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # Lambda Basic Execution Policy
@@ -180,6 +184,10 @@ resource "aws_iam_policy" "lambda_sqs" {
       }
     ]
   })
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_sqs" {
@@ -205,6 +213,10 @@ resource "aws_iam_policy" "lambda_ses" {
       }
     ]
   })
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_ses" {
@@ -229,6 +241,10 @@ resource "aws_iam_policy" "lambda_secrets" {
       }
     ]
   })
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_secrets" {

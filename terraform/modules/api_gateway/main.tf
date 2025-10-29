@@ -121,6 +121,10 @@ resource "aws_cloudwatch_log_group" "api_gateway" {
   retention_in_days = 7
 
   tags = var.tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # API Gateway Method Settings

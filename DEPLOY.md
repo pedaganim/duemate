@@ -2,6 +2,8 @@
 
 This guide provides comprehensive instructions for deploying the DueMate application to AWS using our automated CI/CD workflow.
 
+> **Note**: If you encounter "EntityAlreadyExists" or "ResourceAlreadyExists" errors during deployment, see the [Importing Existing Resources Guide](terraform/IMPORT_EXISTING_RESOURCES.md) for instructions on how to import existing AWS resources into Terraform state.
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -531,6 +533,33 @@ aws dynamodb list-tables --region $AWS_REGION
 echo "Table: $TABLE_NAME"
 echo "Region: $AWS_REGION"
 ```
+
+#### 6. "EntityAlreadyExists" or "ResourceAlreadyExists" errors
+
+**Cause**: Resources already exist in AWS but are not in Terraform state
+
+**Examples**:
+- `Error: creating IAM Role (duemate-production-lambda-execution): EntityAlreadyExists`
+- `Error: creating S3 Bucket (duemate-production-frontend): BucketAlreadyExists`
+- `Error: creating DynamoDB Table: ResourceInUseException: Table already exists`
+
+**Solution**:
+
+Import existing resources into Terraform state:
+
+```bash
+cd terraform
+
+# Option 1: Use the automated import script
+./import-resources.sh production duemate
+
+# Option 2: Manual import (see terraform/IMPORT_EXISTING_RESOURCES.md for details)
+terraform import aws_iam_role.lambda_execution duemate-production-lambda-execution
+terraform import module.s3.aws_s3_bucket.frontend duemate-production-frontend
+# ... etc
+```
+
+For detailed instructions, see [terraform/IMPORT_EXISTING_RESOURCES.md](terraform/IMPORT_EXISTING_RESOURCES.md)
 
 ### Debug Commands
 

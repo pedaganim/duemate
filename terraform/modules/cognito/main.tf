@@ -182,4 +182,8 @@ resource "aws_cognito_user_pool_client" "main" {
 resource "aws_cognito_user_pool_domain" "main" {
   domain       = replace(var.user_pool_name, "_", "-")
   user_pool_id = aws_cognito_user_pool.main.id
+
+  lifecycle {
+    ignore_changes = [domain]
+  }
 }
