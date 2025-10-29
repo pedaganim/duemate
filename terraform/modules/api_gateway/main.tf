@@ -32,6 +32,10 @@ resource "aws_iam_role" "api_gateway_cloudwatch" {
   })
 
   tags = var.tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # Attach the AmazonAPIGatewayPushToCloudWatchLogs managed policy
