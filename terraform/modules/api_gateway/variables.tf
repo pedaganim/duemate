@@ -37,3 +37,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "manage_account_settings" {
+  description = "Whether to manage API Gateway account settings (CloudWatch role). Should be true for only one environment per AWS account/region."
+  type        = bool
+  default     = true
+}

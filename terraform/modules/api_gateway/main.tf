@@ -1,5 +1,7 @@
 # IAM Role for API Gateway CloudWatch Logging
 resource "aws_iam_role" "api_gateway_cloudwatch" {
+  count = var.manage_account_settings ? 1 : 0
+
   name = "${var.api_name}-cloudwatch-role"
 
   assume_role_policy = jsonencode({
@@ -20,13 +22,17 @@ resource "aws_iam_role" "api_gateway_cloudwatch" {
 
 # Attach the AmazonAPIGatewayPushToCloudWatchLogs managed policy
 resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
-  role       = aws_iam_role.api_gateway_cloudwatch.name
+  count = var.manage_account_settings ? 1 : 0
+
+  role       = aws_iam_role.api_gateway_cloudwatch[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 }
 
 # Configure API Gateway Account to use the CloudWatch role
 resource "aws_api_gateway_account" "main" {
-  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch.arn
+  count = var.manage_account_settings ? 1 : 0
+
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch[0].arn
 
   depends_on = [aws_iam_role_policy_attachment.api_gateway_cloudwatch]
 }
@@ -41,8 +47,6 @@ resource "aws_api_gateway_rest_api" "main" {
   }
 
   tags = var.tags
-
-  depends_on = [aws_api_gateway_account.main]
 }
 
 # Cognito Authorizer
