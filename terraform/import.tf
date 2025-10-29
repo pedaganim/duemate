@@ -90,3 +90,51 @@ import {
   to = module.s3.aws_s3_bucket.assets
   id = "${local.name_prefix}-assets"
 }
+
+# Lambda Function - Invoice Create
+import {
+  to = module.lambda_functions.aws_lambda_function.invoice_create
+  id = "${local.name_prefix}-invoice-create"
+}
+
+# CloudWatch Log Group - Invoice Create
+import {
+  to = module.lambda_functions.aws_cloudwatch_log_group.invoice_create
+  id = "/aws/lambda/${local.name_prefix}-invoice-create"
+}
+
+# Lambda Function - Invoice Get
+import {
+  to = module.lambda_functions.aws_lambda_function.invoice_get
+  id = "${local.name_prefix}-invoice-get"
+}
+
+# CloudWatch Log Group - Invoice Get
+import {
+  to = module.lambda_functions.aws_cloudwatch_log_group.invoice_get
+  id = "/aws/lambda/${local.name_prefix}-invoice-get"
+}
+
+# Lambda Function - Reminder Check
+import {
+  to = module.lambda_functions.aws_lambda_function.reminder_check
+  id = "${local.name_prefix}-reminder-check"
+}
+
+# CloudWatch Log Group - Reminder Check
+import {
+  to = module.lambda_functions.aws_cloudwatch_log_group.reminder_check
+  id = "/aws/lambda/${local.name_prefix}-reminder-check"
+}
+
+# Lambda Function - Notification Send
+import {
+  to = module.lambda_functions.aws_lambda_function.notification_send
+  id = "${local.name_prefix}-notification-send"
+}
+
+# CloudWatch Log Group - Notification Send
+import {
+  to = module.lambda_functions.aws_cloudwatch_log_group.notification_send
+  id = "/aws/lambda/${local.name_prefix}-notification-send"
+}
