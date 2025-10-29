@@ -1,3 +1,17 @@
+# API Gateway Module
+#
+# This module configures AWS API Gateway with CloudWatch logging support.
+#
+# IMPORTANT: The aws_api_gateway_account resource is a singleton per AWS account/region.
+# When deploying multiple environments (dev, staging, production) to the same AWS account,
+# set manage_account_settings=true for ONLY ONE environment to avoid conflicts.
+# The CloudWatch logging role will be shared across all API Gateways in the account/region.
+#
+# Example:
+#   - Production: manage_account_settings = true
+#   - Staging:    manage_account_settings = false
+#   - Dev:        manage_account_settings = false
+
 # IAM Role for API Gateway CloudWatch Logging
 resource "aws_iam_role" "api_gateway_cloudwatch" {
   count = var.manage_account_settings ? 1 : 0
