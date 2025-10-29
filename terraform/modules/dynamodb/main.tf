@@ -86,4 +86,8 @@ resource "aws_dynamodb_table" "main" {
       Name = var.table_name
     }
   )
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }

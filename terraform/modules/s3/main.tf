@@ -9,6 +9,10 @@ resource "aws_s3_bucket" "frontend" {
       Type = "Frontend"
     }
   )
+
+  lifecycle {
+    ignore_changes = [bucket]
+  }
 }
 
 resource "aws_s3_bucket_versioning" "frontend" {
@@ -61,6 +65,10 @@ resource "aws_s3_bucket" "invoices" {
       Type = "Invoices"
     }
   )
+
+  lifecycle {
+    ignore_changes = [bucket]
+  }
 }
 
 resource "aws_s3_bucket_versioning" "invoices" {
@@ -123,6 +131,10 @@ resource "aws_s3_bucket" "assets" {
       Type = "Assets"
     }
   )
+
+  lifecycle {
+    ignore_changes = [bucket]
+  }
 }
 
 resource "aws_s3_bucket_versioning" "assets" {
