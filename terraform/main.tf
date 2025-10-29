@@ -122,6 +122,10 @@ resource "aws_iam_policy" "lambda_dynamodb" {
       }
     ]
   })
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_dynamodb" {
@@ -154,6 +158,10 @@ resource "aws_iam_policy" "lambda_s3" {
       }
     ]
   })
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_s3" {

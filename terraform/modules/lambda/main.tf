@@ -46,6 +46,10 @@ resource "aws_cloudwatch_log_group" "invoice_create" {
   name              = "/aws/lambda/${aws_lambda_function.invoice_create.function_name}"
   retention_in_days = var.log_retention_days
   tags              = var.tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # Lambda Function: Invoice Get
@@ -70,6 +74,10 @@ resource "aws_cloudwatch_log_group" "invoice_get" {
   name              = "/aws/lambda/${aws_lambda_function.invoice_get.function_name}"
   retention_in_days = var.log_retention_days
   tags              = var.tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # Lambda Function: Reminder Check
@@ -94,6 +102,10 @@ resource "aws_cloudwatch_log_group" "reminder_check" {
   name              = "/aws/lambda/${aws_lambda_function.reminder_check.function_name}"
   retention_in_days = var.log_retention_days
   tags              = var.tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # Lambda Function: Notification Send
@@ -118,4 +130,8 @@ resource "aws_cloudwatch_log_group" "notification_send" {
   name              = "/aws/lambda/${aws_lambda_function.notification_send.function_name}"
   retention_in_days = var.log_retention_days
   tags              = var.tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
