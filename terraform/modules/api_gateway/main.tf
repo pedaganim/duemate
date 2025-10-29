@@ -1,3 +1,56 @@
+# API Gateway Module
+#
+# This module configures AWS API Gateway with CloudWatch logging support.
+#
+# IMPORTANT: The aws_api_gateway_account resource is a singleton per AWS account/region.
+# When deploying multiple environments (dev, staging, production) to the same AWS account,
+# set manage_account_settings=true for ONLY ONE environment to avoid conflicts.
+# The CloudWatch logging role will be shared across all API Gateways in the account/region.
+#
+# Example:
+#   - Production: manage_account_settings = true
+#   - Staging:    manage_account_settings = false
+#   - Dev:        manage_account_settings = false
+
+# IAM Role for API Gateway CloudWatch Logging
+resource "aws_iam_role" "api_gateway_cloudwatch" {
+  count = var.manage_account_settings ? 1 : 0
+
+  name = "${var.api_name}-cloudwatch-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+# Attach the AmazonAPIGatewayPushToCloudWatchLogs managed policy
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
+  count = var.manage_account_settings ? 1 : 0
+
+  role       = aws_iam_role.api_gateway_cloudwatch[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+# Configure API Gateway Account to use the CloudWatch role
+resource "aws_api_gateway_account" "main" {
+  count = var.manage_account_settings ? 1 : 0
+
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch[0].arn
+
+  depends_on = [aws_iam_role_policy_attachment.api_gateway_cloudwatch]
+}
+
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "main" {
   name        = var.api_name
