@@ -91,6 +91,8 @@ terraform plan
 
 Review the output to ensure all resources are correct.
 
+**Note**: If resources already exist in AWS (e.g., from a previous deployment), they will be automatically imported into the Terraform state during `terraform plan` or `terraform apply`. See [IMPORT_EXISTING_RESOURCES.md](./IMPORT_EXISTING_RESOURCES.md) for details.
+
 ### 4. Deploy Infrastructure
 
 Apply the Terraform configuration:
@@ -300,6 +302,9 @@ Note: Costs depend on actual usage. Most services remain in free tier during dev
 ## Troubleshooting
 
 ### Common Issues
+
+**Issue**: "Error: creating IAM Role: EntityAlreadyExists" or "Error: creating S3 Bucket: BucketAlreadyExists"
+- **Solution**: Resources already exist in AWS. The repository includes automatic import configuration in `import.tf` that will import existing resources during `terraform plan` or `terraform apply`. If this doesn't work, see [IMPORT_EXISTING_RESOURCES.md](./IMPORT_EXISTING_RESOURCES.md) for manual import instructions.
 
 **Issue**: "Error: configuring Terraform AWS Provider: no valid credential sources"
 - **Solution**: Configure AWS credentials with `aws configure` or set environment variables
