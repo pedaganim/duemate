@@ -195,6 +195,56 @@ import_resource "aws_s3_bucket" \
     "${NAME_PREFIX}-assets" \
     "S3 Bucket (assets)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
+# Import Lambda Functions
+TOTAL=$((TOTAL + 1))
+import_resource "aws_lambda_function" \
+    "module.lambda_functions.aws_lambda_function.invoice_create" \
+    "${NAME_PREFIX}-invoice-create" \
+    "Lambda Function (invoice_create)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+TOTAL=$((TOTAL + 1))
+import_resource "aws_lambda_function" \
+    "module.lambda_functions.aws_lambda_function.invoice_get" \
+    "${NAME_PREFIX}-invoice-get" \
+    "Lambda Function (invoice_get)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+TOTAL=$((TOTAL + 1))
+import_resource "aws_lambda_function" \
+    "module.lambda_functions.aws_lambda_function.reminder_check" \
+    "${NAME_PREFIX}-reminder-check" \
+    "Lambda Function (reminder_check)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+TOTAL=$((TOTAL + 1))
+import_resource "aws_lambda_function" \
+    "module.lambda_functions.aws_lambda_function.notification_send" \
+    "${NAME_PREFIX}-notification-send" \
+    "Lambda Function (notification_send)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+# Import CloudWatch Log Groups for Lambda Functions
+TOTAL=$((TOTAL + 1))
+import_resource "aws_cloudwatch_log_group" \
+    "module.lambda_functions.aws_cloudwatch_log_group.invoice_create" \
+    "/aws/lambda/${NAME_PREFIX}-invoice-create" \
+    "CloudWatch Log Group (invoice_create)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+TOTAL=$((TOTAL + 1))
+import_resource "aws_cloudwatch_log_group" \
+    "module.lambda_functions.aws_cloudwatch_log_group.invoice_get" \
+    "/aws/lambda/${NAME_PREFIX}-invoice-get" \
+    "CloudWatch Log Group (invoice_get)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+TOTAL=$((TOTAL + 1))
+import_resource "aws_cloudwatch_log_group" \
+    "module.lambda_functions.aws_cloudwatch_log_group.reminder_check" \
+    "/aws/lambda/${NAME_PREFIX}-reminder-check" \
+    "CloudWatch Log Group (reminder_check)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+TOTAL=$((TOTAL + 1))
+import_resource "aws_cloudwatch_log_group" \
+    "module.lambda_functions.aws_cloudwatch_log_group.notification_send" \
+    "/aws/lambda/${NAME_PREFIX}-notification-send" \
+    "CloudWatch Log Group (notification_send)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
 # Print summary
 echo ""
 print_info "============================================"
