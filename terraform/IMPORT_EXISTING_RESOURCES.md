@@ -40,6 +40,8 @@ The following resources are automatically imported if they exist:
 - Cognito User Pool Domain
 - DynamoDB Table
 - S3 Buckets: `frontend`, `invoices`, `assets`
+- Lambda Functions: `invoice_create`, `invoice_get`, `reminder_check`, `notification_send`
+- CloudWatch Log Groups: for all Lambda functions
 
 ### No Action Required
 
@@ -117,6 +119,24 @@ terraform import module.dynamodb.aws_dynamodb_table.main duemate-production-main
 terraform import module.s3.aws_s3_bucket.frontend duemate-production-frontend
 terraform import module.s3.aws_s3_bucket.invoices duemate-production-invoices
 terraform import module.s3.aws_s3_bucket.assets duemate-production-assets
+```
+
+#### Import Lambda Functions
+
+```bash
+terraform import module.lambda_functions.aws_lambda_function.invoice_create duemate-production-invoice-create
+terraform import module.lambda_functions.aws_lambda_function.invoice_get duemate-production-invoice-get
+terraform import module.lambda_functions.aws_lambda_function.reminder_check duemate-production-reminder-check
+terraform import module.lambda_functions.aws_lambda_function.notification_send duemate-production-notification-send
+```
+
+#### Import CloudWatch Log Groups for Lambda
+
+```bash
+terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_create /aws/lambda/duemate-production-invoice-create
+terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_get /aws/lambda/duemate-production-invoice-get
+terraform import module.lambda_functions.aws_cloudwatch_log_group.reminder_check /aws/lambda/duemate-production-reminder-check
+terraform import module.lambda_functions.aws_cloudwatch_log_group.notification_send /aws/lambda/duemate-production-notification-send
 ```
 
 ### Option 3: Use Data Sources
@@ -199,6 +219,20 @@ echo "Importing S3 Buckets..."
 terraform import module.s3.aws_s3_bucket.frontend "${NAME_PREFIX}-frontend" || true
 terraform import module.s3.aws_s3_bucket.invoices "${NAME_PREFIX}-invoices" || true
 terraform import module.s3.aws_s3_bucket.assets "${NAME_PREFIX}-assets" || true
+
+# Import Lambda Functions
+echo "Importing Lambda Functions..."
+terraform import module.lambda_functions.aws_lambda_function.invoice_create "${NAME_PREFIX}-invoice-create" || true
+terraform import module.lambda_functions.aws_lambda_function.invoice_get "${NAME_PREFIX}-invoice-get" || true
+terraform import module.lambda_functions.aws_lambda_function.reminder_check "${NAME_PREFIX}-reminder-check" || true
+terraform import module.lambda_functions.aws_lambda_function.notification_send "${NAME_PREFIX}-notification-send" || true
+
+# Import CloudWatch Log Groups for Lambda
+echo "Importing CloudWatch Log Groups for Lambda..."
+terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_create "/aws/lambda/${NAME_PREFIX}-invoice-create" || true
+terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_get "/aws/lambda/${NAME_PREFIX}-invoice-get" || true
+terraform import module.lambda_functions.aws_cloudwatch_log_group.reminder_check "/aws/lambda/${NAME_PREFIX}-reminder-check" || true
+terraform import module.lambda_functions.aws_cloudwatch_log_group.notification_send "/aws/lambda/${NAME_PREFIX}-notification-send" || true
 
 echo "Import complete! Run 'terraform plan' to verify."
 ```
