@@ -21,7 +21,7 @@ resource "aws_cloudwatch_event_target" "reminder_check" {
 
 # Lambda Permission for EventBridge
 resource "aws_lambda_permission" "allow_eventbridge" {
-  statement_id  = "AllowExecutionFromEventBridge"
+  statement_id  = "${var.rule_name_prefix}-AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
   function_name = var.reminder_lambda_name
   principal     = "events.amazonaws.com"
