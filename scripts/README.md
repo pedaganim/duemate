@@ -63,15 +63,14 @@ Deploys frontend application to S3 and CloudFront.
 
 ### run-migrations.sh
 
-Runs Prisma database migrations on AWS.
+Verifies DynamoDB database setup.
 
 **Prerequisites:**
-- DATABASE_URL environment variable set
-- OR AWS Secrets Manager configured
+- AWS CLI installed and configured
+- DynamoDB table created by Terraform
 
 **Usage:**
 ```bash
-export DATABASE_URL="your-database-connection-string"
 ./scripts/run-migrations.sh <environment>
 ```
 
@@ -81,9 +80,11 @@ export DATABASE_URL="your-database-connection-string"
 ```
 
 **What it does:**
-- Generates Prisma client
-- Runs pending database migrations
-- Verifies migration success
+- Verifies DynamoDB table exists
+- Checks table status and accessibility
+- Displays table information
+
+**Note:** DueMate uses DynamoDB. Database tables are created by Terraform, not by migrations.
 
 ### verify-deployment.sh
 
@@ -193,8 +194,9 @@ Scripts may require the following environment variables:
 | Variable | Description | Required By |
 |----------|-------------|-------------|
 | `AWS_REGION` | AWS region | All deployment scripts |
-| `DATABASE_URL` | Database connection string | run-migrations.sh |
 | `S3_BUCKET_NAME` | S3 bucket for frontend | deploy-frontend.sh |
+
+**Note**: DueMate uses DynamoDB which is provisioned by Terraform. No DATABASE_URL is needed.
 
 ## Additional Resources
 

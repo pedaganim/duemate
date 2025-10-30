@@ -196,12 +196,10 @@ jobs:
           chmod +x ./scripts/deploy-lambda.sh
           ./scripts/deploy-lambda.sh ${{ needs.determine-environment.outputs.environment }}
 
-      - name: Run Database Migrations
+      - name: Verify Database Setup
         run: |
           chmod +x ./scripts/run-migrations.sh
           ./scripts/run-migrations.sh ${{ needs.determine-environment.outputs.environment }}
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # Deploy frontend (if applicable)
   deploy-frontend:
