@@ -20,6 +20,8 @@ resource "aws_cloudwatch_event_target" "reminder_check" {
 }
 
 # Lambda Permission for EventBridge
+# Note: statement_id must be unique per Lambda function. Using rule_name_prefix ensures
+# uniqueness across different environments (dev, staging, production) and deployments.
 resource "aws_lambda_permission" "allow_eventbridge" {
   statement_id  = "${var.rule_name_prefix}-AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
