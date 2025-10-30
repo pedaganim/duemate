@@ -278,13 +278,18 @@ duemate/
 Create a `.env` file in the root directory:
 
 ```env
-# Database
-DATABASE_URL="file:./dev.db"
+# AWS Configuration
+AWS_REGION=us-east-1
+
+# DynamoDB Configuration
+TABLE_NAME=duemate-dev-main
 
 # Server
 PORT=3000
 NODE_ENV=development
 ```
+
+**Note**: DueMate uses DynamoDB. See `.env.example` for full configuration options.
 
 ## Database Schema
 

@@ -124,9 +124,10 @@ For each environment, add:
 
 | Secret Name | Description | Required |
 |-------------|-------------|----------|
-| `DATABASE_URL` | Database connection string | Yes |
 | `AWS_REGION` | Region override (optional) | No |
 | `S3_BUCKET_NAME` | Frontend S3 bucket (optional) | No |
+
+**Note**: DueMate uses DynamoDB which is provisioned by Terraform. No DATABASE_URL is needed.
 
 ### 2. Trigger Deployment
 
@@ -369,16 +370,15 @@ chmod +x scripts/deploy-lambda.sh
 ./scripts/deploy-lambda.sh dev
 ```
 
-### 4. Run Database Migrations
+### 4. Verify Database Setup
 
 ```bash
-# Set DATABASE_URL
-export DATABASE_URL="your-database-url"
-
-# Run migrations
+# Verify DynamoDB table exists
 chmod +x scripts/run-migrations.sh
 ./scripts/run-migrations.sh dev
 ```
+
+**Note**: DueMate uses DynamoDB (NoSQL). The database tables are created by Terraform, not by migrations.
 
 ### 5. Deploy Frontend (if applicable)
 
@@ -439,18 +439,19 @@ chmod +x scripts/verify-deployment.sh
 
 ### run-migrations.sh
 
-**Purpose**: Execute database migrations
+**Purpose**: Verify DynamoDB database setup
 
 **Usage**:
 ```bash
-export DATABASE_URL="your-database-url"
 ./scripts/run-migrations.sh <environment>
 ```
 
 **What it does**:
-1. Generates Prisma client
-2. Runs pending migrations
-3. Verifies migration success
+1. Verifies DynamoDB table exists
+2. Checks table status and accessibility
+3. Displays table information
+
+**Note**: No migrations are needed as DynamoDB tables are managed by Terraform.
 
 ### verify-deployment.sh
 
@@ -520,9 +521,9 @@ aws s3 ls s3://duemate-dev-frontend
 ls -la frontend/
 ```
 
-#### 5. Database migration fails
+#### 5. Database verification fails
 
-**Cause**: Invalid DATABASE_URL or connectivity issue
+**Cause**: DynamoDB table not accessible or Terraform not applied
 
 **Solution**:
 ```bash
