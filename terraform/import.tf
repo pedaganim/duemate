@@ -138,3 +138,21 @@ import {
   to = module.lambda_functions.aws_cloudwatch_log_group.notification_send
   id = "/aws/lambda/${local.name_prefix}-notification-send"
 }
+
+# EventBridge Rule - Reminder Check
+import {
+  to = module.eventbridge.aws_cloudwatch_event_rule.reminder_check
+  id = "${local.name_prefix}-reminder-check"
+}
+
+# EventBridge Target - Reminder Check
+import {
+  to = module.eventbridge.aws_cloudwatch_event_target.reminder_check
+  id = "${local.name_prefix}-reminder-check/ReminderCheckLambda"
+}
+
+# Lambda Permission - EventBridge to invoke Reminder Check
+import {
+  to = module.eventbridge.aws_lambda_permission.allow_eventbridge
+  id = "${local.name_prefix}-reminder-check/${local.name_prefix}-AllowExecutionFromEventBridge"
+}

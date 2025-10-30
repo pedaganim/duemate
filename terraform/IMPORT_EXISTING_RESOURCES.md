@@ -42,6 +42,9 @@ The following resources are automatically imported if they exist:
 - S3 Buckets: `frontend`, `invoices`, `assets`
 - Lambda Functions: `invoice_create`, `invoice_get`, `reminder_check`, `notification_send`
 - CloudWatch Log Groups: for all Lambda functions
+- EventBridge Rule: `reminder_check`
+- EventBridge Target: `reminder_check`
+- Lambda Permission: `allow_eventbridge` (EventBridge to invoke reminder Lambda)
 
 ### No Action Required
 
@@ -137,6 +140,19 @@ terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_create
 terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_get /aws/lambda/duemate-production-invoice-get
 terraform import module.lambda_functions.aws_cloudwatch_log_group.reminder_check /aws/lambda/duemate-production-reminder-check
 terraform import module.lambda_functions.aws_cloudwatch_log_group.notification_send /aws/lambda/duemate-production-notification-send
+```
+
+#### Import EventBridge Resources
+
+```bash
+# EventBridge Rule
+terraform import module.eventbridge.aws_cloudwatch_event_rule.reminder_check duemate-production-reminder-check
+
+# EventBridge Target (format: rule-name/target-id)
+terraform import module.eventbridge.aws_cloudwatch_event_target.reminder_check duemate-production-reminder-check/ReminderCheckLambda
+
+# Lambda Permission (format: function-name/statement-id)
+terraform import module.eventbridge.aws_lambda_permission.allow_eventbridge duemate-production-reminder-check/duemate-production-AllowExecutionFromEventBridge
 ```
 
 ### Option 3: Use Data Sources
