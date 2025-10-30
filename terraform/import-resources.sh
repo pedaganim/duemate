@@ -245,6 +245,25 @@ import_resource "aws_cloudwatch_log_group" \
     "/aws/lambda/${NAME_PREFIX}-notification-send" \
     "CloudWatch Log Group (notification_send)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
+# Import EventBridge Resources
+TOTAL=$((TOTAL + 1))
+import_resource "aws_cloudwatch_event_rule" \
+    "module.eventbridge.aws_cloudwatch_event_rule.reminder_check" \
+    "${NAME_PREFIX}-reminder-check" \
+    "EventBridge Rule (reminder_check)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+TOTAL=$((TOTAL + 1))
+import_resource "aws_cloudwatch_event_target" \
+    "module.eventbridge.aws_cloudwatch_event_target.reminder_check" \
+    "${NAME_PREFIX}-reminder-check/ReminderCheckLambda" \
+    "EventBridge Target (reminder_check)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+TOTAL=$((TOTAL + 1))
+import_resource "aws_lambda_permission" \
+    "module.eventbridge.aws_lambda_permission.allow_eventbridge" \
+    "${NAME_PREFIX}-reminder-check/${NAME_PREFIX}-AllowExecutionFromEventBridge" \
+    "Lambda Permission (allow_eventbridge)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
 # Print summary
 echo ""
 print_info "============================================"
