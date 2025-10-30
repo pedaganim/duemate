@@ -34,12 +34,18 @@ TABLE_INFO=$(aws dynamodb describe-table --table-name "$TABLE_NAME" 2>/dev/null 
 if [ -n "$TABLE_INFO" ]; then
     echo "✓ DynamoDB table '$TABLE_NAME' exists and is accessible"
     
-    # Parse table status from cached output
-    TABLE_STATUS=$(echo "$TABLE_INFO" | grep -o '"TableStatus": *"[^"]*"' | cut -d'"' -f4)
-    echo "  Status: $TABLE_STATUS"
+    # Check if jq is available for JSON parsing
+    if command -v jq &> /dev/null; then
+        # Parse using jq (more reliable)
+        TABLE_STATUS=$(echo "$TABLE_INFO" | jq -r '.Table.TableStatus // "unknown"')
+        ITEM_COUNT=$(echo "$TABLE_INFO" | jq -r '.Table.ItemCount // "unknown"')
+    else
+        # Fallback to grep parsing if jq not available
+        TABLE_STATUS=$(echo "$TABLE_INFO" | grep -o '"TableStatus": *"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+        ITEM_COUNT=$(echo "$TABLE_INFO" | grep -o '"ItemCount": *[0-9]*' | grep -o '[0-9]*' || echo "unknown")
+    fi
     
-    # Parse item count from cached output
-    ITEM_COUNT=$(echo "$TABLE_INFO" | grep -o '"ItemCount": *[0-9]*' | grep -o '[0-9]*')
+    echo "  Status: $TABLE_STATUS"
     echo "  Item count: $ITEM_COUNT (approximate)"
 else
     echo "⚠ Warning: DynamoDB table '$TABLE_NAME' not found or not accessible"
