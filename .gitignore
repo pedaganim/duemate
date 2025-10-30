@@ -51,3 +51,5 @@ build/
 *.tfstate.*
 .terraform.lock.hcl
 tfplan
+*.zip
+terraform
