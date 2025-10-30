@@ -28,15 +28,18 @@ echo ""
 TABLE_NAME="duemate-${ENVIRONMENT}-main"
 echo "Verifying DynamoDB table: $TABLE_NAME"
 
-if aws dynamodb describe-table --table-name "$TABLE_NAME" &>/dev/null; then
+# Get table description (single API call)
+TABLE_INFO=$(aws dynamodb describe-table --table-name "$TABLE_NAME" 2>/dev/null || echo "")
+
+if [ -n "$TABLE_INFO" ]; then
     echo "✓ DynamoDB table '$TABLE_NAME' exists and is accessible"
     
-    # Get table status
-    TABLE_STATUS=$(aws dynamodb describe-table --table-name "$TABLE_NAME" --query 'Table.TableStatus' --output text)
+    # Parse table status from cached output
+    TABLE_STATUS=$(echo "$TABLE_INFO" | grep -o '"TableStatus": *"[^"]*"' | cut -d'"' -f4)
     echo "  Status: $TABLE_STATUS"
     
-    # Get item count (approximate)
-    ITEM_COUNT=$(aws dynamodb describe-table --table-name "$TABLE_NAME" --query 'Table.ItemCount' --output text)
+    # Parse item count from cached output
+    ITEM_COUNT=$(echo "$TABLE_INFO" | grep -o '"ItemCount": *[0-9]*' | grep -o '[0-9]*')
     echo "  Item count: $ITEM_COUNT (approximate)"
 else
     echo "⚠ Warning: DynamoDB table '$TABLE_NAME' not found or not accessible"
