@@ -139,12 +139,17 @@ jobs:
           terraform plan \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
             -var="aws_region=${{ secrets.AWS_REGION || 'us-east-1' }}" \
-            -out=tfplan
+            -out=tfplan || (echo "Terraform plan failed" && exit 1)
 
       - name: Terraform Apply
         if: needs.determine-environment.outputs.terraform_action == 'apply'
         working-directory: ./terraform
-        run: terraform apply -auto-approve tfplan
+        run: |
+          if [ ! -f tfplan ]; then
+            echo "tfplan file not found. Terraform plan failed."
+            exit 1
+          fi
+          terraform apply -auto-approve tfplan || (echo "Terraform apply failed" && exit 1)
 
       - name: Terraform Destroy
         if: needs.determine-environment.outputs.terraform_action == 'destroy'
