@@ -15,8 +15,15 @@ Navigate to: Settings → Secrets and variables → Actions
 | Secret Name | Description | Example Value |
 |-------------|-------------|---------------|
 | `AWS_ROLE_ARN` | AWS IAM role ARN for OIDC authentication | `arn:aws:iam::123456789012:role/GitHubActionsRole` |
-| `AWS_REGION` | AWS region for deployment | `us-east-1` |
 | `TERRAFORM_STATE_BUCKET` | S3 bucket for Terraform state (optional) | `duemate-terraform-state` |
+
+### Repository Variables
+
+Navigate to: Settings → Secrets and variables → Actions → Variables
+
+| Variable Name | Description | Example Value |
+|---------------|-------------|---------------|
+| `AWS_REGION` | AWS region for deployment | `us-east-1` |
 
 ### Environment Secrets
 
@@ -29,8 +36,13 @@ Navigate to: Settings → Environments → [Create/Edit Environment]
 | Secret Name | Description | Required |
 |-------------|-------------|----------|
 | `DATABASE_URL` | Database connection string | Yes* |
-| `AWS_REGION` | Region override (optional) | No |
 | `S3_BUCKET_NAME` | Frontend bucket override | No |
+
+**Environment Variables (optional overrides):**
+
+| Variable Name | Description | Required |
+|---------------|-------------|----------|
+| `AWS_REGION` | Region override (optional) | No |
 
 *Note: DATABASE_URL can also be stored in AWS Secrets Manager
 

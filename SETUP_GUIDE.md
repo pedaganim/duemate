@@ -2,7 +2,7 @@
 
 This guide provides step-by-step instructions for setting up GitHub secrets, variables, and required AWS resources for the DueMate deployment workflow.
 
-## Required GitHub Secrets
+## Required GitHub Configuration
 
 ### Repository Secrets
 
@@ -11,8 +11,15 @@ Navigate to: **Settings → Secrets and variables → Actions → Secrets → Ne
 | Secret Name | Required | Description | Example Value | Where to Get |
 |-------------|----------|-------------|---------------|--------------|
 | `AWS_ROLE_ARN` | **Yes** | AWS IAM role ARN for OIDC | `arn:aws:iam::123456789012:role/GitHubActionsRole` | Create IAM role (see below) |
-| `AWS_REGION` | **Yes** | AWS region for deployment | `us-east-1` | Choose your preferred region |
 | `TERRAFORM_STATE_BUCKET` | No | S3 bucket for Terraform state | `duemate-terraform-state` | Create S3 bucket first (see below) |
+
+### Repository Variables
+
+Navigate to: **Settings → Secrets and variables → Actions → Variables → New repository variable**
+
+| Variable Name | Required | Description | Example Value | Where to Get |
+|---------------|----------|-------------|---------------|--------------|
+| `AWS_REGION` | **Yes** | AWS region for deployment | `us-east-1` | Choose your preferred region |
 
 ### Environment Secrets
 
@@ -32,8 +39,17 @@ For **each environment** (dev, staging, production), add:
 
 | Secret Name | Required | Description | Example Value |
 |-------------|----------|-------------|---------------|
-| `AWS_REGION` | No | Region override for this environment | `us-west-2` |
 | `S3_BUCKET_NAME` | No | Frontend bucket name override | `duemate-dev-frontend` |
+
+**Environment Variables (optional overrides):**
+
+For **each environment**, you can optionally configure:
+
+Navigate to: **Settings → Environments → [Select Environment] → Variables → Add variable**
+
+| Variable Name | Required | Description | Example Value |
+|---------------|----------|-------------|---------------|
+| `AWS_REGION` | No | Region override for this environment | `us-west-2` |
 
 **Note**: Database connection is handled by DynamoDB. No DATABASE_URL secret is needed.
 
@@ -257,7 +273,7 @@ aws ses verify-domain-identity \
   - [ ] IAM role created with trust policy for your repository
   - [ ] Permissions attached (Administrator or custom policy)
   - [ ] Added `AWS_ROLE_ARN` to GitHub secrets
-  - [ ] Added `AWS_REGION` to GitHub secrets
+  - [ ] Added `AWS_REGION` to GitHub variables
 
 - [ ] **GitHub Environments Created**
   - [ ] Created `dev` environment
@@ -301,8 +317,10 @@ git push origin develop
 
 To get started with minimal setup:
 
-1. **GitHub Repository Secrets** (2 required):
+1. **GitHub Repository Secrets** (1 required):
    - `AWS_ROLE_ARN`
+
+2. **GitHub Repository Variables** (1 required):
    - `AWS_REGION`
 
 That's it! The workflow will create all other AWS resources automatically using Terraform, including DynamoDB tables for data storage.
@@ -326,13 +344,15 @@ The workflow will automatically create:
 
 ### "Error: configuring Terraform AWS Provider: no valid credential sources"
 
-**Cause:** AWS credentials not configured in GitHub secrets
+**Cause:** AWS credentials not configured in GitHub
 
 **Solution:**
-1. Verify secrets are set: Settings → Secrets and variables → Actions
-2. Check secret names match exactly: `AWS_ROLE_ARN`, `AWS_REGION`
-3. Verify IAM role exists and has correct trust policy
-4. Verify OIDC provider is configured in AWS IAM
+1. Verify secrets are set: Settings → Secrets and variables → Actions → Secrets
+2. Verify variables are set: Settings → Secrets and variables → Actions → Variables
+3. Check secret name matches exactly: `AWS_ROLE_ARN`
+4. Check variable name matches exactly: `AWS_REGION`
+5. Verify IAM role exists and has correct trust policy
+6. Verify OIDC provider is configured in AWS IAM
 
 ### "Error: error creating DynamoDB Table: ResourceInUseException"
 

@@ -174,14 +174,16 @@ From the original issue: "Setup workflow for deployment to AWS"
 1. **Configure GitHub Secrets**
    - AWS_ACCESS_KEY_ID
    - AWS_SECRET_ACCESS_KEY
+   
+2. **Configure GitHub Variables**
    - AWS_REGION
    
-2. **Create GitHub Environments**
+3. **Create GitHub Environments**
    - dev
    - staging
    - production
    
-3. **Test Deployment**
+4. **Test Deployment**
    - Push to develop branch
    - Monitor GitHub Actions
    - Verify deployment
