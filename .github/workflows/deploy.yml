@@ -203,15 +203,44 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          terraform plan \
+          
+          echo "=============================================="
+          echo "Running Terraform Plan"
+          echo "Environment: ${{ needs.determine-environment.outputs.environment }}"
+          echo "Region: ${{ vars.AWS_REGION || 'us-east-1' }}"
+          echo "=============================================="
+          echo ""
+          
+          # Run terraform plan and capture output
+          if ! terraform plan \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
             -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" \
-            -out=tfplan || { 
-              echo "Terraform plan failed"
-              echo "Showing current state for debugging:"
-              terraform show || echo "No state available"
-              exit 1
-            }
+            -out=tfplan 2>&1 | tee terraform_plan.log; then
+            
+            echo ""
+            echo "=============================================="
+            echo "❌ Terraform Plan Failed"
+            echo "=============================================="
+            echo ""
+            echo "Please review the error output above for details."
+            echo ""
+            echo "Common issues:"
+            echo "  - Missing or invalid AWS credentials"
+            echo "  - Missing required variables"
+            echo "  - Resource conflicts or naming issues"
+            echo "  - Invalid Terraform configuration"
+            echo ""
+            
+            # Show current state if available for additional context
+            echo "Current Terraform state (if available):"
+            terraform show 2>/dev/null || echo "No state file found (this may be a new deployment)"
+            echo ""
+            
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ Terraform plan completed successfully"
 
       - name: Terraform Apply
         if: needs.determine-environment.outputs.terraform_action == 'apply'
@@ -219,11 +248,34 @@ jobs:
         run: |
           set -e
           set -o pipefail
+          
+          echo "=============================================="
+          echo "Running Terraform Apply"
+          echo "=============================================="
+          echo ""
+          
           if [ ! -f tfplan ]; then
-            echo "tfplan file not found. Terraform plan failed."
+            echo "❌ ERROR: tfplan file not found. Terraform plan may have failed."
             exit 1
           fi
-          terraform apply -auto-approve tfplan || { echo "Terraform apply failed"; exit 1; }
+          
+          # Run terraform apply and capture output
+          if ! terraform apply -auto-approve tfplan 2>&1 | tee terraform_apply.log; then
+            echo ""
+            echo "=============================================="
+            echo "❌ Terraform Apply Failed"
+            echo "=============================================="
+            echo ""
+            echo "Please review the error output above for details."
+            echo ""
+            echo "The infrastructure may be in a partial state."
+            echo "Review the Terraform state and error messages carefully."
+            echo ""
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ Terraform apply completed successfully"
 
       - name: Terraform Destroy
         if: needs.determine-environment.outputs.terraform_action == 'destroy'
@@ -231,12 +283,36 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          terraform destroy -auto-approve \
+          
+          echo "=============================================="
+          echo "Running Terraform Destroy"
+          echo "Environment: ${{ needs.determine-environment.outputs.environment }}"
+          echo "Region: ${{ vars.AWS_REGION || 'us-east-1' }}"
+          echo "=============================================="
+          echo ""
+          echo "⚠️  WARNING: This will destroy all infrastructure!"
+          echo ""
+          
+          # Run terraform destroy and capture output
+          if ! terraform destroy -auto-approve \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
-            -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" || {
-              echo "Terraform destroy failed"
-              exit 1
-            }
+            -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" 2>&1 | tee terraform_destroy.log; then
+            
+            echo ""
+            echo "=============================================="
+            echo "❌ Terraform Destroy Failed"
+            echo "=============================================="
+            echo ""
+            echo "Please review the error output above for details."
+            echo ""
+            echo "Some resources may still exist. Check the AWS console"
+            echo "and Terraform state to verify what was deleted."
+            echo ""
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ Terraform destroy completed successfully"
 
       - name: Get Terraform Outputs
         if: needs.determine-environment.outputs.terraform_action != 'destroy'
