@@ -67,7 +67,7 @@ jobs:
           if [ -z "${{ secrets.AWS_REGION }}" ]; then
             echo "ℹ️  AWS_REGION is not set (will use default: us-east-1)"
           else
-            echo "✅ AWS_REGION is set to: ${{ secrets.AWS_REGION }}"
+            echo "✅ AWS_REGION is set"
           fi
 
           # TERRAFORM_STATE_BUCKET has a fallback to local state
