@@ -112,7 +112,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -140,7 +140,7 @@ jobs:
           set -o pipefail
           terraform plan \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
-            -var="aws_region=${{ secrets.AWS_REGION || 'us-east-1' }}" \
+            -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" \
             -out=tfplan || { echo "Terraform plan failed"; exit 1; }
 
       - name: Terraform Apply
@@ -163,7 +163,7 @@ jobs:
           set -o pipefail
           terraform destroy -auto-approve \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
-            -var="aws_region=${{ secrets.AWS_REGION || 'us-east-1' }}" || {
+            -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" || {
               echo "Terraform destroy failed"
               exit 1
             }
@@ -203,7 +203,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy Lambda Functions
         run: |
@@ -235,7 +235,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy Frontend to S3
         if: hashFiles('frontend/**') != ''
@@ -261,7 +261,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Verify Lambda Functions
         run: |
@@ -285,7 +285,7 @@ jobs:
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ needs.determine-environment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Region:** ${{ secrets.AWS_REGION || 'us-east-1' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ needs.deploy-infrastructure.outputs.api_endpoint }}" ]; then
             echo "**API Endpoint:** ${{ needs.deploy-infrastructure.outputs.api_endpoint }}" >> $GITHUB_STEP_SUMMARY

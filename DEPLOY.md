@@ -103,29 +103,39 @@ Before the first deployment, ensure you have:
 
 ## Quick Start
 
-### 1. Configure GitHub Secrets
+### 1. Configure GitHub Secrets and Variables
 
-Navigate to your repository settings and add the following secrets:
+Navigate to your repository settings and add the following:
 
-**Repository Secrets** (Settings → Secrets and variables → Actions → New repository secret):
+**Repository Secrets** (Settings → Secrets and variables → Actions → Secrets → New repository secret):
 
 | Secret Name | Description | Example |
 |-------------|-------------|---------|
 | `AWS_ACCESS_KEY_ID` | AWS access key ID | `AKIAIOSFODNN7EXAMPLE` |
 | `AWS_SECRET_ACCESS_KEY` | AWS secret access key | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
-| `AWS_REGION` | AWS region to deploy to | `us-east-1` |
 | `TERRAFORM_STATE_BUCKET` | S3 bucket for Terraform state (optional) | `duemate-terraform-state` |
 
-**Environment-Specific Secrets** (Settings → Environments → New environment):
+**Repository Variables** (Settings → Secrets and variables → Actions → Variables → New repository variable):
+
+| Variable Name | Description | Example |
+|---------------|-------------|---------|
+| `AWS_REGION` | AWS region to deploy to | `us-east-1` |
+
+**Environment-Specific Configuration** (Settings → Environments → New environment):
 
 Create three environments: `dev`, `staging`, `production`
 
-For each environment, add:
+For each environment, you can optionally add:
 
+**Secrets:**
 | Secret Name | Description | Required |
 |-------------|-------------|----------|
-| `AWS_REGION` | Region override (optional) | No |
 | `S3_BUCKET_NAME` | Frontend S3 bucket (optional) | No |
+
+**Variables (optional overrides):**
+| Variable Name | Description | Required |
+|---------------|-------------|----------|
+| `AWS_REGION` | Region override (optional) | No |
 
 **Note**: DueMate uses DynamoDB which is provisioned by Terraform. No DATABASE_URL is needed.
 

@@ -190,9 +190,13 @@ DueMate supports automated deployment to AWS using GitHub Actions and Terraform.
 
 ### Quick Deployment
 
-1. **Configure GitHub Secrets** (required):
+1. **Configure GitHub Secrets and Variables** (required):
+   
+   **Secrets:**
    - `AWS_ACCESS_KEY_ID`
    - `AWS_SECRET_ACCESS_KEY`
+   
+   **Variables:**
    - `AWS_REGION`
 
 2. **Deploy to AWS**:

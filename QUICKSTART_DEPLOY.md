@@ -4,9 +4,9 @@ This is a quick reference guide for deploying DueMate to AWS. For comprehensive 
 
 ## 🚀 First Time Setup
 
-### 1. Configure GitHub Secrets
+### 1. Configure GitHub Secrets and Variables
 
-Go to **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+**Secrets** - Go to **Settings** → **Secrets and variables** → **Actions** → **Secrets** → **New repository secret**
 
 Add these secrets:
 
@@ -14,6 +14,13 @@ Add these secrets:
 |--------|-------|
 | `AWS_ACCESS_KEY_ID` | Your AWS access key |
 | `AWS_SECRET_ACCESS_KEY` | Your AWS secret key |
+
+**Variables** - Go to **Settings** → **Secrets and variables** → **Actions** → **Variables** → **New repository variable**
+
+Add these variables:
+
+| Variable | Value |
+|----------|-------|
 | `AWS_REGION` | `us-east-1` (or your preferred region) |
 
 ### 2. Create Environments
