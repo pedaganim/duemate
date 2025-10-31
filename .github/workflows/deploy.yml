@@ -36,10 +36,69 @@ permissions:
   contents: read
 
 jobs:
+  # Verify all required variables and secrets are set
+  verify-config:
+    name: Verify Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Required Secrets and Variables
+        run: |
+          echo "🔍 Verifying required secrets and variables..."
+          echo ""
+
+          # Track if any required secrets are missing
+          MISSING_SECRETS=0
+
+          # Check required secrets
+          echo "## Required Secrets"
+
+          # AWS_ROLE_ARN is required for AWS authentication
+          if [ -z "${{ secrets.AWS_ROLE_ARN }}" ]; then
+            echo "❌ AWS_ROLE_ARN is MISSING (required for AWS authentication)"
+            MISSING_SECRETS=1
+          else
+            echo "✅ AWS_ROLE_ARN is set"
+          fi
+
+          echo ""
+          echo "## Optional Secrets (with defaults)"
+
+          # AWS_REGION has a default fallback
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
+            echo "ℹ️  AWS_REGION is not set (will use default: us-east-1)"
+          else
+            echo "✅ AWS_REGION is set to: ${{ secrets.AWS_REGION }}"
+          fi
+
+          # TERRAFORM_STATE_BUCKET has a fallback to local state
+          if [ -z "${{ secrets.TERRAFORM_STATE_BUCKET }}" ]; then
+            echo "ℹ️  TERRAFORM_STATE_BUCKET is not set (will use local state)"
+          else
+            echo "✅ TERRAFORM_STATE_BUCKET is set"
+          fi
+
+          echo ""
+
+          # Fail the job if any required secrets are missing
+          if [ $MISSING_SECRETS -eq 1 ]; then
+            echo "---"
+            echo "❌ Configuration validation FAILED"
+            echo ""
+            echo "Please configure the missing required secrets:"
+            echo "  Settings → Secrets and variables → Actions"
+            echo ""
+            echo "For more information, see DEPLOY.md"
+            exit 1
+          fi
+
+          echo "---"
+          echo "✅ All required secrets and variables are properly configured!"
+
   # Job to determine which environment to deploy to
   determine-environment:
     name: Determine Environment
     runs-on: ubuntu-latest
+    needs: verify-config
     outputs:
       environment: ${{ steps.set-env.outputs.environment }}
       terraform_action: ${{ steps.set-env.outputs.terraform_action }}
@@ -65,6 +124,7 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    needs: verify-config
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
