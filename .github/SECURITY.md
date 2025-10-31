@@ -6,6 +6,8 @@ This document provides important security information for the DueMate deployment
 
 The following secrets must be configured in your GitHub repository:
 
+**Note:** The CI workflow includes an automated validation step that checks for required secrets before deployment. If any required secrets are missing, the workflow will fail early with clear error messages indicating which secrets need to be configured.
+
 ### Repository Secrets
 
 Navigate to: Settings → Secrets and variables → Actions
@@ -31,6 +33,18 @@ Navigate to: Settings → Environments → [Create/Edit Environment]
 | `S3_BUCKET_NAME` | Frontend bucket override | No |
 
 *Note: DATABASE_URL can also be stored in AWS Secrets Manager
+
+## Secrets Validation
+
+The deployment workflow automatically validates that all required secrets are configured before proceeding with any deployment steps. This validation happens in the `validate-secrets` job which:
+
+- **Runs First**: Executes before all other jobs to fail fast if configuration is missing
+- **Checks Required Secrets**: Validates that `AWS_ROLE_ARN` is set (required for OIDC authentication)
+- **Warns About Optional Secrets**: Displays warnings for optional secrets (`AWS_REGION`, `TERRAFORM_STATE_BUCKET`) that have defaults
+- **Provides Clear Error Messages**: Shows exactly which secrets are missing and where to configure them
+- **Prevents Wasted CI Time**: Fails immediately instead of waiting for deployment steps to fail with cryptic errors
+
+If the validation fails, check the workflow logs for detailed information about which secrets need to be configured.
 
 ## Environment Protection Rules
 
