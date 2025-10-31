@@ -211,11 +211,11 @@ jobs:
           echo "=============================================="
           echo ""
           
-          # Run terraform plan and capture output
+          # Run terraform plan and capture all output (stdout and stderr)
           if ! terraform plan \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
             -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" \
-            -out=tfplan 2>&1 | tee terraform_plan.log; then
+            -out=tfplan 2>&1; then
             
             echo ""
             echo "=============================================="
@@ -259,8 +259,8 @@ jobs:
             exit 1
           fi
           
-          # Run terraform apply and capture output
-          if ! terraform apply -auto-approve tfplan 2>&1 | tee terraform_apply.log; then
+          # Run terraform apply and capture all output (stdout and stderr)
+          if ! terraform apply -auto-approve tfplan 2>&1; then
             echo ""
             echo "=============================================="
             echo "❌ Terraform Apply Failed"
@@ -293,10 +293,10 @@ jobs:
           echo "⚠️  WARNING: This will destroy all infrastructure!"
           echo ""
           
-          # Run terraform destroy and capture output
+          # Run terraform destroy and capture all output (stdout and stderr)
           if ! terraform destroy -auto-approve \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
-            -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" 2>&1 | tee terraform_destroy.log; then
+            -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" 2>&1; then
             
             echo ""
             echo "=============================================="
