@@ -206,7 +206,7 @@ jobs:
           terraform plan \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
             -var="aws_region=${{ vars.AWS_REGION || 'us-east-1' }}" \
-            -out=tfplan || { echo "Terraform plan failed"; exit 1; }
+            -out=tfplan || { echo "Terraform plan failed"; terraform show; exit 1; }
 
       - name: Terraform Apply
         if: needs.determine-environment.outputs.terraform_action == 'apply'
