@@ -127,16 +127,16 @@ import {
   id = "/aws/lambda/${local.name_prefix}-reminder-check"
 }
 
-# Lambda Function - Notification Send
+# Lambda Function - Notification Worker
 import {
-  to = module.lambda_functions.aws_lambda_function.notification_send
-  id = "${local.name_prefix}-notification-send"
+  to = module.lambda_functions.aws_lambda_function.notification_worker
+  id = "${local.name_prefix}-notification-worker"
 }
 
-# CloudWatch Log Group - Notification Send
+# CloudWatch Log Group - Notification Worker
 import {
-  to = module.lambda_functions.aws_cloudwatch_log_group.notification_send
-  id = "/aws/lambda/${local.name_prefix}-notification-send"
+  to = module.lambda_functions.aws_cloudwatch_log_group.notification_worker
+  id = "/aws/lambda/${local.name_prefix}-notification-worker"
 }
 
 # EventBridge Rule - Reminder Check
