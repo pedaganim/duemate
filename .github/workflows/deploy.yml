@@ -233,7 +233,7 @@ jobs:
             
             # Show current state if available for additional context
             echo "Current Terraform state (if available):"
-            terraform show 2>/dev/null || echo "No state file found (this may be a new deployment)"
+            terraform show 2>/dev/null || echo "No state file found (new deployment or state backend issue)"
             echo ""
             
             exit 1
@@ -255,7 +255,7 @@ jobs:
           echo ""
           
           if [ ! -f tfplan ]; then
-            echo "❌ ERROR: tfplan file not found. Terraform plan may have failed."
+            echo "❌ ERROR: tfplan file not found. Terraform plan failed or was skipped."
             exit 1
           fi
           
