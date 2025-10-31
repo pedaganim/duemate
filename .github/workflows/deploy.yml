@@ -163,8 +163,10 @@ jobs:
           set -o pipefail
           terraform destroy -auto-approve \
             -var="environment=${{ needs.determine-environment.outputs.environment }}" \
-            -var="aws_region=${{ secrets.AWS_REGION || 'us-east-1' }}" \
-            || { echo "Terraform destroy failed"; exit 1; }
+            -var="aws_region=${{ secrets.AWS_REGION || 'us-east-1' }}" || {
+              echo "Terraform destroy failed"
+              exit 1
+            }
 
       - name: Get Terraform Outputs
         if: needs.determine-environment.outputs.terraform_action != 'destroy'
