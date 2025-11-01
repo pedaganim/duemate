@@ -183,6 +183,8 @@ import_resource "aws_cloudwatch_log_group" \
 
 # Import Cognito User Pool
 # We need to get the user pool ID by listing pools and filtering by name
+# Note: This lists up to 60 user pools. For AWS accounts with more pools,
+# you may need to manually import: terraform import module.cognito.aws_cognito_user_pool.main <pool-id>
 print_info "Looking up Cognito User Pool ID for ${NAME_PREFIX}-users..."
 USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='${NAME_PREFIX}-users'].Id" --output text 2>/dev/null || echo "")
 

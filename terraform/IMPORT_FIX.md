@@ -103,6 +103,24 @@ terraform plan
 terraform apply
 ```
 
+### Limitations
+
+**Cognito User Pool Lookup:** The import script lists up to 60 user pools when searching for the user pool by name. If your AWS account has more than 60 user pools, you may need to manually import:
+
+```bash
+# Find your user pool ID in AWS Console or via CLI
+aws cognito-idp list-user-pools --max-results 100
+
+# Manually import the user pool
+terraform import module.cognito.aws_cognito_user_pool.main <your-pool-id>
+
+# Then import the client
+terraform import module.cognito.aws_cognito_user_pool_client.main <pool-id>/<client-id>
+
+# Then import the domain
+terraform import module.cognito.aws_cognito_user_pool_domain.main <domain-name>
+```
+
 ## Files Changed
 
 - `terraform/import.tf.example` - Fixed to use variables instead of locals
