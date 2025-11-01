@@ -1,5 +1,22 @@
 # Quick Fix for Deployment Issues
 
+## 🎉 Automated Fix (Recommended)
+
+**As of the latest update, the GitHub Actions deployment workflow automatically detects and handles both scenarios below!**
+
+The workflow now:
+- ✅ Automatically detects if resources already exist in AWS
+- ✅ Enables import configuration when needed
+- ✅ Handles both new deployments and re-deployments seamlessly
+- ✅ No manual intervention required for CI/CD deployments
+
+**You only need the manual fixes below if:**
+- You're deploying manually (not via GitHub Actions)
+- You want to understand what the automation does
+- The automated detection fails for some reason
+
+---
+
 ## Error 1: "Cannot import non-existent remote object"
 
 If you see:
@@ -13,7 +30,9 @@ provider detected that no object exists with the given id.
 
 ### Quick Solution
 
-This happens when `import.tf` is enabled but resources don't exist yet.
+**GitHub Actions**: The workflow automatically handles this. No action needed.
+
+**Manual Deployment**: This happens when `import.tf` is enabled but resources don't exist yet.
 
 **For new deployments:**
 ```bash
@@ -43,7 +62,9 @@ Error: ResourceInUseException: Table already exists
 
 ### Quick Solution
 
-Enable import functionality to import existing resources:
+**GitHub Actions**: The workflow automatically detects and enables import. No action needed.
+
+**Manual Deployment**: Enable import functionality to import existing resources:
 
 ```bash
 cd terraform
