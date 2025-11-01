@@ -121,8 +121,23 @@ terraform import module.cognito.aws_cognito_user_pool_client.main <pool-id>/<cli
 terraform import module.cognito.aws_cognito_user_pool_domain.main <domain-name>
 ```
 
+### 4. Conditional Import Blocks Failed During Plan
+**Problem:** Import blocks for conditional resources (with `count`) cause `terraform plan` to fail when the resource doesn't exist in the configuration.
+
+Example: If `manage_account_settings = false`, then `module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]` doesn't exist in the configuration (count = 0). Import blocks that reference `[0]` will fail.
+
+**Solution:** Removed conditional import blocks from `import.tf.example`. The manual import script (`import-resources.sh`) already handles these gracefully:
+- Checks if resource exists in AWS before importing
+- Returns success even if resource doesn't exist (Terraform will create it)
+- Only fails if import fails for other reasons
+
+Conditional resources removed from import.tf:
+- `module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]`
+- `module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]`
+
 ## Files Changed
 
-- `terraform/import.tf.example` - Fixed to use variables instead of locals
+- `terraform/import.tf.example` - Fixed to use variables instead of locals, removed conditional import blocks
 - `terraform/import-resources.sh` - Added Cognito user pool/client import logic
 - `.github/workflows/deploy.yml` - Moved import execution before terraform plan
+- `terraform/IMPORT_FIX.md` - Updated documentation

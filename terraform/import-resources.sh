@@ -103,6 +103,13 @@ import_resource() {
            grep -q "NotFound" /tmp/import.log; then
             print_warn "$resource_name does not exist in AWS. Terraform will create it."
             return 0
+        # Check if resource doesn't exist in configuration (conditional resource with count = 0)
+        elif grep -q "resource address.*does not exist" /tmp/import.log || \
+             grep -q "No instances" /tmp/import.log || \
+             grep -q "index out of range" /tmp/import.log || \
+             grep -q "does not have a resource" /tmp/import.log; then
+            print_warn "$resource_name is not in the Terraform configuration (likely count = 0). Skipping import."
+            return 0
         else
             print_error "Failed to import $resource_name"
             cat /tmp/import.log
