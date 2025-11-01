@@ -304,7 +304,7 @@ Note: Costs depend on actual usage. Most services remain in free tier during dev
 ### Common Issues
 
 **Issue**: "Error: creating IAM Role: EntityAlreadyExists" or "Error: creating S3 Bucket: BucketAlreadyExists"
-- **Solution**: Resources already exist in AWS. The repository includes automatic import configuration in `import.tf` that will import existing resources during `terraform plan` or `terraform apply`. If this doesn't work, see [IMPORT_EXISTING_RESOURCES.md](./IMPORT_EXISTING_RESOURCES.md) for manual import instructions.
+- **Solution**: Resources already exist in AWS. The repository includes automatic import configuration in `import.tf.example`. To use it, rename the file to `import.tf` and run terraform again. See [IMPORT_EXISTING_RESOURCES.md](./IMPORT_EXISTING_RESOURCES.md) for detailed instructions.
 
 **Issue**: "Error: configuring Terraform AWS Provider: no valid credential sources"
 - **Solution**: Configure AWS credentials with `aws configure` or set environment variables

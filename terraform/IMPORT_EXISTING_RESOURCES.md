@@ -19,20 +19,50 @@ These errors occur when:
 
 ## Automatic Import Solution (Recommended)
 
-**This repository now includes automatic import configuration!**
+**This repository includes automatic import configuration for existing resources!**
 
-The `terraform/import.tf` file contains import blocks that automatically import existing resources during `terraform plan` or `terraform apply`. This is supported in Terraform 1.5.0+ (this repository requires 1.5.0+).
+The `terraform/import.tf.example` file contains import blocks that can automatically import existing resources during `terraform plan` or `terraform apply`. This is supported in Terraform 1.5.0+ (this repository requires 1.5.0+).
+
+### ⚠️ Important: Import File is Disabled by Default
+
+The import file is named `import.tf.example` (disabled) by default to prevent deployment failures on new/clean environments. 
+
+**For NEW deployments**: Do nothing. Terraform will create all resources from scratch.
+
+**For EXISTING infrastructure**: Rename `import.tf.example` to `import.tf` before running terraform commands.
 
 ### How It Works
 
+**When import.tf is enabled (renamed from .example):**
+
 1. When you run `terraform plan` or `terraform apply`, Terraform checks each import block
 2. If the resource exists in AWS but not in the state file, it imports it automatically
-3. If the resource doesn't exist in AWS, Terraform creates it normally
+3. If the resource doesn't exist in AWS, **the import will FAIL with an error**
 4. If the resource is already in state, the import block is skipped
+
+**Important**: Import blocks will cause deployment failures if resources don't exist in AWS. This is why the file is disabled by default.
+
+### Enabling Automatic Import
+
+Only enable automatic import if you have existing resources to import:
+
+```bash
+cd terraform
+# Rename the file to enable import blocks
+mv import.tf.example import.tf
+
+# Now run terraform
+terraform init
+terraform plan
+terraform apply
+
+# After successful import, disable again (optional but recommended)
+mv import.tf import.tf.example
+```
 
 ### Covered Resources
 
-The following resources are automatically imported if they exist:
+The following resources are automatically imported when import.tf is enabled:
 - IAM Role: `lambda_execution`
 - IAM Policies: `lambda_dynamodb`, `lambda_s3`, `lambda_sqs`, `lambda_ses`, `lambda_secrets`
 - IAM Role: `api_gateway_cloudwatch` (conditional)
@@ -40,24 +70,11 @@ The following resources are automatically imported if they exist:
 - Cognito User Pool Domain
 - DynamoDB Table
 - S3 Buckets: `frontend`, `invoices`, `assets`
-- Lambda Functions: `invoice_create`, `invoice_get`, `reminder_check`, `notification_send`
+- Lambda Functions: `invoice_create`, `invoice_get`, `reminder_check`, `notification_worker`
 - CloudWatch Log Groups: for all Lambda functions
 - EventBridge Rule: `reminder_check`
 - EventBridge Target: `reminder_check`
 - Lambda Permission: `allow_eventbridge` (EventBridge to invoke reminder Lambda)
-
-### No Action Required
-
-Simply run your normal Terraform commands:
-
-```bash
-cd terraform
-terraform init
-terraform plan
-terraform apply
-```
-
-The import will happen automatically during plan/apply if needed.
 
 ## Manual Import (Alternative Method)
 
@@ -130,7 +147,7 @@ terraform import module.s3.aws_s3_bucket.assets duemate-production-assets
 terraform import module.lambda_functions.aws_lambda_function.invoice_create duemate-production-invoice-create
 terraform import module.lambda_functions.aws_lambda_function.invoice_get duemate-production-invoice-get
 terraform import module.lambda_functions.aws_lambda_function.reminder_check duemate-production-reminder-check
-terraform import module.lambda_functions.aws_lambda_function.notification_send duemate-production-notification-send
+terraform import module.lambda_functions.aws_lambda_function.notification_worker duemate-production-notification-worker
 ```
 
 #### Import CloudWatch Log Groups for Lambda
@@ -139,7 +156,7 @@ terraform import module.lambda_functions.aws_lambda_function.notification_send d
 terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_create /aws/lambda/duemate-production-invoice-create
 terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_get /aws/lambda/duemate-production-invoice-get
 terraform import module.lambda_functions.aws_cloudwatch_log_group.reminder_check /aws/lambda/duemate-production-reminder-check
-terraform import module.lambda_functions.aws_cloudwatch_log_group.notification_send /aws/lambda/duemate-production-notification-send
+terraform import module.lambda_functions.aws_cloudwatch_log_group.notification_worker /aws/lambda/duemate-production-notification-worker
 ```
 
 #### Import EventBridge Resources
@@ -241,14 +258,14 @@ echo "Importing Lambda Functions..."
 terraform import module.lambda_functions.aws_lambda_function.invoice_create "${NAME_PREFIX}-invoice-create" || true
 terraform import module.lambda_functions.aws_lambda_function.invoice_get "${NAME_PREFIX}-invoice-get" || true
 terraform import module.lambda_functions.aws_lambda_function.reminder_check "${NAME_PREFIX}-reminder-check" || true
-terraform import module.lambda_functions.aws_lambda_function.notification_send "${NAME_PREFIX}-notification-send" || true
+terraform import module.lambda_functions.aws_lambda_function.notification_worker "${NAME_PREFIX}-notification-worker" || true
 
 # Import CloudWatch Log Groups for Lambda
 echo "Importing CloudWatch Log Groups for Lambda..."
 terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_create "/aws/lambda/${NAME_PREFIX}-invoice-create" || true
 terraform import module.lambda_functions.aws_cloudwatch_log_group.invoice_get "/aws/lambda/${NAME_PREFIX}-invoice-get" || true
 terraform import module.lambda_functions.aws_cloudwatch_log_group.reminder_check "/aws/lambda/${NAME_PREFIX}-reminder-check" || true
-terraform import module.lambda_functions.aws_cloudwatch_log_group.notification_send "/aws/lambda/${NAME_PREFIX}-notification-send" || true
+terraform import module.lambda_functions.aws_cloudwatch_log_group.notification_worker "/aws/lambda/${NAME_PREFIX}-notification-worker" || true
 
 echo "Import complete! Run 'terraform plan' to verify."
 ```
