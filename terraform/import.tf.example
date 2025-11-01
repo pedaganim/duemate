@@ -1,13 +1,33 @@
 # Import Configuration for Existing Resources
 #
+# ⚠️  IMPORTANT: This file is disabled by default (*.example extension)
+# 
 # This file contains import blocks to automatically import existing AWS resources
 # into Terraform state. This prevents "resource already exists" errors when running
 # terraform apply on infrastructure that was previously created.
+#
+# ⚠️  DO NOT USE FOR NEW DEPLOYMENTS
+# If you're deploying to AWS for the first time, you DO NOT need this file.
+# Import blocks will FAIL if the resources don't exist in AWS yet.
+#
+# 📋 WHEN TO USE THIS FILE:
+# Only use this file when you have existing AWS resources that need to be imported
+# into Terraform state, such as:
+# - Resources created manually in the AWS Console
+# - Resources from a previous deployment without Terraform state
+# - Recovering from lost Terraform state
+#
+# 🔧 HOW TO USE:
+# 1. Rename this file from import.tf.example to import.tf
+# 2. Run: terraform plan
+# 3. Terraform will automatically import existing resources
+# 4. After successful import, rename back to import.tf.example or delete
 #
 # Import blocks are supported in Terraform 1.5.0+
 #
 # When you run `terraform plan` or `terraform apply`, Terraform will automatically
 # import these resources if they exist in AWS but not in the state file.
+# If a resource doesn't exist in AWS, the import will FAIL with an error.
 
 # Data source to get current AWS account ID
 data "aws_caller_identity" "current" {}
@@ -48,14 +68,17 @@ import {
   id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name_prefix}-lambda-secrets"
 }
 
-# IAM Role - API Gateway CloudWatch (conditional - only if manage_account_settings is true)
+# IAM Role - API Gateway CloudWatch (conditional)
 # Note: This import block will only be active if the resource is created (count = 1)
+# This requires manage_account_settings = true in the API Gateway module (default is true)
 import {
   to = module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]
   id = "${local.name_prefix}-api-cloudwatch-role"
 }
 
-# CloudWatch Log Group - API Gateway
+# CloudWatch Log Group - API Gateway (conditional)
+# Note: This import block will only be active if the resource is created (count = 1)
+# This requires var.enable_api_gateway_logging = true in the root module configuration
 import {
   to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
   id = "/aws/apigateway/${local.name_prefix}-api"
