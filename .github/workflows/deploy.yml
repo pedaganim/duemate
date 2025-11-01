@@ -209,20 +209,25 @@ jobs:
           echo ""
           
           # Get AWS account ID once (optimization)
-          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)
           
-          # Read project name from terraform configuration to match what Terraform uses
-          # This ensures consistency with the Terraform naming scheme
-          PROJECT_NAME=$(grep -A 1 'variable "project_name"' variables.tf | grep 'default' | sed 's/.*"\(.*\)".*/\1/' || echo "duemate")
+          # Read project name from terraform.tfvars if it exists, otherwise use default
+          # This is more robust than parsing the variables.tf file
+          if [ -f "terraform.tfvars" ] && grep -q "project_name" terraform.tfvars; then
+            PROJECT_NAME=$(grep "project_name" terraform.tfvars | sed 's/.*=\s*"\(.*\)".*/\1/')
+          else
+            PROJECT_NAME="duemate"
+          fi
+          
           ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
           
           # Check if customer_name is used (for whitelabel deployments)
           # For standard deployments without customer name, the pattern is: project-environment
           # For whitelabel deployments with customer name, the pattern is: project-customer-environment
           # We'll check both patterns to be safe
-          CUSTOMER_NAME="${{ vars.CUSTOMER_NAME || '' }}"
+          CUSTOMER_NAME="${{ vars.CUSTOMER_NAME }}"
           
-          if [ -n "$CUSTOMER_NAME" ]; then
+          if [ -n "$CUSTOMER_NAME" ] && [ "$CUSTOMER_NAME" != "null" ]; then
             NAME_PREFIX="${PROJECT_NAME}-${CUSTOMER_NAME}-${ENVIRONMENT}"
             echo "Whitelabel deployment detected"
             echo "Customer: ${CUSTOMER_NAME}"
@@ -244,16 +249,16 @@ jobs:
             
             case $resource_type in
               "dynamodb")
-                aws dynamodb describe-table --table-name "$resource_name" &>/dev/null && return 0 || return 1
+                aws dynamodb describe-table --table-name "$resource_name" >/dev/null 2>&1 && return 0 || return 1
                 ;;
               "s3")
-                aws s3api head-bucket --bucket "$resource_name" &>/dev/null && return 0 || return 1
+                aws s3api head-bucket --bucket "$resource_name" >/dev/null 2>&1 && return 0 || return 1
                 ;;
               "iam-role")
-                aws iam get-role --role-name "$resource_name" &>/dev/null && return 0 || return 1
+                aws iam get-role --role-name "$resource_name" >/dev/null 2>&1 && return 0 || return 1
                 ;;
               "iam-policy")
-                aws iam get-policy --policy-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${resource_name}" &>/dev/null && return 0 || return 1
+                aws iam get-policy --policy-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${resource_name}" >/dev/null 2>&1 && return 0 || return 1
                 ;;
             esac
           }
