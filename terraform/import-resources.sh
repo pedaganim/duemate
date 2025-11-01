@@ -156,10 +156,10 @@ import_resource "aws_iam_policy" \
     "IAM Policy (lambda_secrets)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
 # Import API Gateway IAM Role (conditional resource)
-# This resource is only created when var.manage_account_settings = true (default)
-# It's used to give API Gateway permission to write logs to CloudWatch
-# NOTE: If this resource doesn't exist (var = false), the import will fail but that's expected.
-#       The import_resource function handles this gracefully and will skip it.
+# This resource is only created when manage_account_settings = true (default)
+# in the API Gateway module. It's used to give API Gateway permission to write logs to CloudWatch.
+# NOTE: If this resource doesn't exist (manage_account_settings = false), the import will fail
+#       but that's expected. The import_resource function handles this gracefully and will skip it.
 TOTAL=$((TOTAL + 1))
 import_resource "aws_iam_role" \
     "module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]" \
@@ -167,10 +167,10 @@ import_resource "aws_iam_role" \
     "IAM Role (api_gateway_cloudwatch)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
 # Import API Gateway CloudWatch Log Group (conditional resource)
-# This resource is only created when var.enable_api_gateway_logging = true (default)
-# It stores API Gateway access logs
-# NOTE: If this resource doesn't exist (var = false), the import will fail but that's expected.
-#       The import_resource function handles this gracefully and will skip it.
+# This resource is only created when enable_logging = true (default) in the API Gateway module.
+# It stores API Gateway access logs.
+# NOTE: If this resource doesn't exist (enable_logging = false), the import will fail
+#       but that's expected. The import_resource function handles this gracefully and will skip it.
 TOTAL=$((TOTAL + 1))
 import_resource "aws_cloudwatch_log_group" \
     "module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]" \
