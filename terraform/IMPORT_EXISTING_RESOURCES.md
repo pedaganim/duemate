@@ -62,12 +62,12 @@ mv import.tf import.tf.example
 
 ### Covered Resources
 
-The following resources are automatically imported when import.tf is enabled:
+The following resources are automatically imported by the two-part import system:
+
+**Part 1: import.tf (Non-conditional resources with static IDs)**
+When enabled, these resources are imported during `terraform plan`:
 - IAM Role: `lambda_execution`
 - IAM Policies: `lambda_dynamodb`, `lambda_s3`, `lambda_sqs`, `lambda_ses`, `lambda_secrets`
-- IAM Role: `api_gateway_cloudwatch` (conditional)
-- CloudWatch Log Group: API Gateway (conditional)
-- Cognito User Pool Domain
 - DynamoDB Table
 - S3 Buckets: `frontend`, `invoices`, `assets`
 - Lambda Functions: `invoice_create`, `invoice_get`, `reminder_check`, `notification_worker`
@@ -76,21 +76,50 @@ The following resources are automatically imported when import.tf is enabled:
 - EventBridge Target: `reminder_check`
 - Lambda Permission: `allow_eventbridge` (EventBridge to invoke reminder Lambda)
 
+**Part 2: import-resources.sh (Conditional + Dynamic resources)**
+The import script handles additional resources that require dynamic lookups or are conditional:
+- API Gateway CloudWatch Role (only if `manage_account_settings = true`)
+- API Gateway CloudWatch Log Group (only if `enable_logging = true`)
+- Cognito User Pool (requires dynamic ID lookup)
+- Cognito User Pool Client (requires dynamic ID lookup)
+- Cognito User Pool Domain (must import after user pool)
+
+**Why the split?**
+- Import blocks (import.tf) cannot be conditional and fail if resources don't exist in the configuration
+- Conditional resources (count-based) may not exist in the configuration, causing import failures
+- Dynamic resources (Cognito) require AWS API calls to look up IDs before importing
+- The script handles both cases gracefully, while import.tf provides fast imports for predictable resources
+
+For more details, see `IMPORT_FIX.md`.
+
 ## Manual Import (Alternative Method)
 
 If you need to import resources manually or the automatic import doesn't work, you have these options:
 
-### Option 1: Use the Import Script
+### Option 1: Use the Import Script (Recommended)
 
-A bash script is provided for manual imports:
+A comprehensive bash script is provided that handles all resource imports, including conditional and dynamic resources:
 
 ```bash
 cd terraform
 chmod +x import-resources.sh
 ./import-resources.sh production duemate
+
+# For whitelabel deployments with customer name:
+./import-resources.sh production duemate acme
 ```
 
-This script will import all resources that exist in AWS but are not in the Terraform state.
+This script will:
+- Import all resources that exist in AWS but are not in the Terraform state
+- Handle conditional resources gracefully (skips if count = 0)
+- Dynamically look up Cognito User Pool and Client IDs
+- Provide detailed output about what was imported, skipped, or failed
+
+The script is more robust than manual imports because it:
+- Checks if resources already exist in state before importing
+- Handles resources that don't exist in AWS (lets Terraform create them)
+- Handles resources that don't exist in configuration (count = 0)
+- Imports Cognito resources in the correct order (pool → client → domain)
 
 ### Option 2: Manual Terraform Import Commands
 
