@@ -156,6 +156,8 @@ import_resource "aws_iam_policy" \
     "IAM Policy (lambda_secrets)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
 # Import API Gateway IAM Role (conditional resource)
+# This resource is only created when var.manage_account_settings = true (default)
+# It's used to give API Gateway permission to write logs to CloudWatch
 TOTAL=$((TOTAL + 1))
 import_resource "aws_iam_role" \
     "module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]" \
@@ -163,6 +165,8 @@ import_resource "aws_iam_role" \
     "IAM Role (api_gateway_cloudwatch)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
 # Import API Gateway CloudWatch Log Group (conditional resource)
+# This resource is only created when var.enable_api_gateway_logging = true (default)
+# It stores API Gateway access logs
 TOTAL=$((TOTAL + 1))
 import_resource "aws_cloudwatch_log_group" \
     "module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]" \

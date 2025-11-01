@@ -469,6 +469,9 @@ jobs:
             exit 1
           fi
           
+          # Define error patterns for resource conflicts
+          RESOURCE_EXISTS_PATTERN="EntityAlreadyExists|BucketAlreadyExists|ResourceAlreadyExists|ResourceInUseException"
+          
           # Run terraform apply and capture output to a file for analysis
           if ! terraform apply -auto-approve tfplan 2>&1 | tee /tmp/terraform_apply.log; then
             echo ""
@@ -478,7 +481,7 @@ jobs:
             echo ""
             
             # Check if the error is due to resources already existing
-            if grep -q "EntityAlreadyExists\|BucketAlreadyExists\|ResourceAlreadyExists\|ResourceInUseException" /tmp/terraform_apply.log; then
+            if grep -qE "${RESOURCE_EXISTS_PATTERN}" /tmp/terraform_apply.log; then
               echo "⚠️  DETECTED: Resources already exist in AWS"
               echo ""
               echo "This error occurs when AWS resources exist but are not in Terraform state."
@@ -494,7 +497,7 @@ jobs:
               echo "   terraform apply"
               echo ""
               echo "Resources that failed to import:"
-              grep -E "Error: creating.*already exists|EntityAlreadyExists|BucketAlreadyExists|ResourceAlreadyExists|ResourceInUseException" /tmp/terraform_apply.log || true
+              grep -E "Error: creating.*already exists|${RESOURCE_EXISTS_PATTERN}" /tmp/terraform_apply.log || true
               echo ""
             fi
             
