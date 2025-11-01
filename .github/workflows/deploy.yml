@@ -340,16 +340,17 @@ jobs:
               
               # Check if conditional resources exist and add import blocks if needed
               # These are the resources that were removed from import.tf.example
+              # Use || true to continue even if checks fail
               
               # Check for API Gateway CloudWatch role
               if aws iam get-role --role-name "${NAME_PREFIX}-api-cloudwatch-role" >/dev/null 2>&1; then
                 echo "✓ Found API Gateway CloudWatch role, adding import block"
-                cat >> import.tf <<EOF
+                cat >> import.tf <<EOF || echo "⚠️  Warning: Failed to add API Gateway CloudWatch role import block"
 
 # API Gateway CloudWatch Role (detected in AWS)
 import {
   to = module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]
-  id = "${NAME_PREFIX}-api-cloudwatch-role"
+  id = "\${local.import_name_prefix}-api-cloudwatch-role"
 }
 EOF
               fi
@@ -357,12 +358,12 @@ EOF
               # Check for API Gateway CloudWatch log group
               if aws logs describe-log-groups --log-group-name-prefix "/aws/apigateway/${NAME_PREFIX}-api" --query 'logGroups[0].logGroupName' --output text 2>/dev/null | grep -q "^/aws/apigateway/${NAME_PREFIX}-api$"; then
                 echo "✓ Found API Gateway log group, adding import block"
-                cat >> import.tf <<EOF
+                cat >> import.tf <<EOF || echo "⚠️  Warning: Failed to add API Gateway log group import block"
 
 # API Gateway CloudWatch Log Group (detected in AWS)
 import {
   to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
-  id = "/aws/apigateway/${NAME_PREFIX}-api"
+  id = "/aws/apigateway/\${local.import_name_prefix}-api"
 }
 EOF
               fi
@@ -375,12 +376,12 @@ EOF
                 DOMAIN_EXISTS=$(aws cognito-idp describe-user-pool --user-pool-id "$USER_POOL_ID" --query 'UserPool.Domain' --output text 2>/dev/null || echo "")
                 if [ -n "$DOMAIN_EXISTS" ] && [ "$DOMAIN_EXISTS" != "None" ]; then
                   echo "✓ Found Cognito User Pool Domain, adding import block"
-                  cat >> import.tf <<EOF
+                  cat >> import.tf <<EOF || echo "⚠️  Warning: Failed to add Cognito domain import block"
 
 # Cognito User Pool Domain (detected in AWS)
 import {
   to = module.cognito.aws_cognito_user_pool_domain.main
-  id = "${NAME_PREFIX}-users"
+  id = "\${local.import_name_prefix}-users"
 }
 EOF
                 fi
