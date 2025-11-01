@@ -155,7 +155,26 @@ import_resource "aws_iam_policy" \
     "arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${NAME_PREFIX}-lambda-secrets" \
     "IAM Policy (lambda_secrets)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
-# Import CloudWatch Log Group
+# Import API Gateway IAM Role (conditional resource)
+# This resource is only created when manage_account_settings = true (default: true)
+# in the API Gateway module. It's used to give API Gateway permission to write logs to CloudWatch.
+# NOTE: If this resource doesn't exist in AWS (because manage_account_settings = false),
+#       the import_resource function will detect this and return success (code 0), allowing
+#       Terraform to create the resource if needed. The function only returns failure (code 1)
+#       if the import fails for reasons other than the resource not existing.
+TOTAL=$((TOTAL + 1))
+import_resource "aws_iam_role" \
+    "module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]" \
+    "${NAME_PREFIX}-api-cloudwatch-role" \
+    "IAM Role (api_gateway_cloudwatch)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+
+# Import API Gateway CloudWatch Log Group (conditional resource)
+# This resource is only created when enable_logging = true (default: true) in the API Gateway module.
+# It stores API Gateway access logs.
+# NOTE: If this resource doesn't exist in AWS (because enable_logging = false),
+#       the import_resource function will detect this and return success (code 0), allowing
+#       Terraform to create the resource if needed. The function only returns failure (code 1)
+#       if the import fails for reasons other than the resource not existing.
 TOTAL=$((TOTAL + 1))
 import_resource "aws_cloudwatch_log_group" \
     "module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]" \
@@ -216,9 +235,9 @@ import_resource "aws_lambda_function" \
 
 TOTAL=$((TOTAL + 1))
 import_resource "aws_lambda_function" \
-    "module.lambda_functions.aws_lambda_function.notification_send" \
-    "${NAME_PREFIX}-notification-send" \
-    "Lambda Function (notification_send)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+    "module.lambda_functions.aws_lambda_function.notification_worker" \
+    "${NAME_PREFIX}-notification-worker" \
+    "Lambda Function (notification_worker)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
 # Import CloudWatch Log Groups for Lambda Functions
 TOTAL=$((TOTAL + 1))
@@ -241,9 +260,9 @@ import_resource "aws_cloudwatch_log_group" \
 
 TOTAL=$((TOTAL + 1))
 import_resource "aws_cloudwatch_log_group" \
-    "module.lambda_functions.aws_cloudwatch_log_group.notification_send" \
-    "/aws/lambda/${NAME_PREFIX}-notification-send" \
-    "CloudWatch Log Group (notification_send)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+    "module.lambda_functions.aws_cloudwatch_log_group.notification_worker" \
+    "/aws/lambda/${NAME_PREFIX}-notification-worker" \
+    "CloudWatch Log Group (notification_worker)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
 # Import EventBridge Resources
 TOTAL=$((TOTAL + 1))

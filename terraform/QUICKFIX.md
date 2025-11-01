@@ -5,8 +5,10 @@
 **As of the latest update, the GitHub Actions deployment workflow automatically detects and handles both scenarios below!**
 
 The workflow now:
-- ✅ Automatically detects if resources already exist in AWS
+- ✅ Automatically detects if resources already exist in AWS (checks 5+ key resources)
 - ✅ Enables import configuration when needed
+- ✅ Falls back to manual import script if automatic import fails
+- ✅ Provides detailed error diagnostics for common issues
 - ✅ Handles both new deployments and re-deployments seamlessly
 - ✅ No manual intervention required for CI/CD deployments
 

@@ -265,31 +265,62 @@ jobs:
           
           # Check for key resources that indicate existing infrastructure
           RESOURCES_EXIST=false
+          RESOURCES_CHECKED=0
+          RESOURCES_FOUND=0
           
           echo "Checking DynamoDB table: ${NAME_PREFIX}-main"
+          RESOURCES_CHECKED=$((RESOURCES_CHECKED + 1))
           if check_resource_exists "dynamodb" "${NAME_PREFIX}-main"; then
             echo "✓ DynamoDB table exists"
             RESOURCES_EXIST=true
+            RESOURCES_FOUND=$((RESOURCES_FOUND + 1))
           else
             echo "✗ DynamoDB table does not exist"
           fi
           
           echo "Checking S3 bucket: ${NAME_PREFIX}-frontend"
+          RESOURCES_CHECKED=$((RESOURCES_CHECKED + 1))
           if check_resource_exists "s3" "${NAME_PREFIX}-frontend"; then
             echo "✓ S3 frontend bucket exists"
             RESOURCES_EXIST=true
+            RESOURCES_FOUND=$((RESOURCES_FOUND + 1))
           else
             echo "✗ S3 frontend bucket does not exist"
           fi
           
           echo "Checking IAM role: ${NAME_PREFIX}-lambda-execution"
+          RESOURCES_CHECKED=$((RESOURCES_CHECKED + 1))
           if check_resource_exists "iam-role" "${NAME_PREFIX}-lambda-execution"; then
             echo "✓ IAM Lambda role exists"
             RESOURCES_EXIST=true
+            RESOURCES_FOUND=$((RESOURCES_FOUND + 1))
           else
             echo "✗ IAM Lambda role does not exist"
           fi
           
+          # Check additional resources to get better signal
+          echo "Checking S3 bucket: ${NAME_PREFIX}-invoices"
+          RESOURCES_CHECKED=$((RESOURCES_CHECKED + 1))
+          if check_resource_exists "s3" "${NAME_PREFIX}-invoices"; then
+            echo "✓ S3 invoices bucket exists"
+            RESOURCES_EXIST=true
+            RESOURCES_FOUND=$((RESOURCES_FOUND + 1))
+          else
+            echo "✗ S3 invoices bucket does not exist"
+          fi
+          
+          echo "Checking IAM policy: ${NAME_PREFIX}-lambda-sqs"
+          RESOURCES_CHECKED=$((RESOURCES_CHECKED + 1))
+          if check_resource_exists "iam-policy" "${NAME_PREFIX}-lambda-sqs"; then
+            echo "✓ IAM lambda-sqs policy exists"
+            RESOURCES_EXIST=true
+            RESOURCES_FOUND=$((RESOURCES_FOUND + 1))
+          else
+            echo "✗ IAM lambda-sqs policy does not exist"
+          fi
+          
+          echo ""
+          echo "Resources found: ${RESOURCES_FOUND}/${RESOURCES_CHECKED}"
           echo ""
           
           # Enable import configuration if resources exist
@@ -326,6 +357,55 @@ jobs:
             fi
           fi
           
+          echo ""
+
+      - name: Manual Import Fallback (if needed)
+        if: always()
+        working-directory: ./terraform
+        run: |
+          set +e  # Don't exit on error in this step
+          
+          echo "=============================================="
+          echo "Checking if Manual Import is Needed"
+          echo "=============================================="
+          echo ""
+          
+          # Only attempt manual import if import.tf exists (meaning resources were detected)
+          if [ ! -f "import.tf" ]; then
+            echo "No import.tf found - skipping manual import fallback"
+            echo "This is likely a new deployment."
+            exit 0
+          fi
+          
+          echo "import.tf detected - resources exist in AWS"
+          echo "Attempting pre-import using manual script to ensure clean state..."
+          echo ""
+          
+          # Make import script executable
+          chmod +x import-resources.sh
+          
+          # Determine name prefix (same logic as detection step)
+          if [ -f "terraform.tfvars" ] && grep -q "project_name" terraform.tfvars; then
+            PROJECT_NAME=$(grep "project_name" terraform.tfvars | sed 's/.*=\s*"\(.*\)".*/\1/')
+          else
+            PROJECT_NAME="duemate"
+          fi
+          
+          ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+          CUSTOMER_NAME="${{ vars.CUSTOMER_NAME }}"
+          
+          # Run import script with appropriate parameters
+          if [ -n "$CUSTOMER_NAME" ] && [ "$CUSTOMER_NAME" != "null" ]; then
+            echo "Running: ./import-resources.sh $ENVIRONMENT $PROJECT_NAME $CUSTOMER_NAME"
+            ./import-resources.sh "$ENVIRONMENT" "$PROJECT_NAME" "$CUSTOMER_NAME" || true
+          else
+            echo "Running: ./import-resources.sh $ENVIRONMENT $PROJECT_NAME"
+            ./import-resources.sh "$ENVIRONMENT" "$PROJECT_NAME" || true
+          fi
+          
+          echo ""
+          echo "Manual import attempt completed (errors ignored)"
+          echo "Terraform plan will handle any remaining import needs"
           echo ""
 
       - name: Terraform Plan
@@ -389,13 +469,42 @@ jobs:
             exit 1
           fi
           
-          # Run terraform apply and capture all output (stdout and stderr)
-          if ! terraform apply -auto-approve tfplan 2>&1; then
+          # Define error patterns for resource conflicts
+          # Using word boundaries to ensure exact matches and avoid false positives
+          RESOURCE_EXISTS_PATTERN="\b(EntityAlreadyExists|BucketAlreadyExists|ResourceAlreadyExists|ResourceInUseException)\b"
+          ERROR_PREFIX_PATTERN="Error: creating.*already exists"
+          
+          # Run terraform apply and capture output to a file for analysis
+          if ! terraform apply -auto-approve tfplan 2>&1 | tee /tmp/terraform_apply.log; then
             echo ""
             echo "=============================================="
             echo "❌ Terraform Apply Failed"
             echo "=============================================="
             echo ""
+            
+            # Check if the error is due to resources already existing
+            if grep -qE "${RESOURCE_EXISTS_PATTERN}" /tmp/terraform_apply.log; then
+              echo "⚠️  DETECTED: Resources already exist in AWS"
+              echo ""
+              echo "This error occurs when AWS resources exist but are not in Terraform state."
+              echo ""
+              echo "Troubleshooting steps:"
+              echo "1. The automatic import detection should have handled this"
+              echo "2. Check if the resource names match the expected pattern"
+              echo "3. Verify that import.tf was properly enabled (check earlier logs)"
+              echo "4. Manual fix: Use the import-resources.sh script:"
+              echo "   cd terraform"
+              echo "   ./import-resources.sh ${{ needs.determine-environment.outputs.environment }}"
+              echo "   terraform plan"
+              echo "   terraform apply"
+              echo ""
+              echo "Resources that failed to import:"
+              # Show both error patterns separately for clarity
+              grep -E "${ERROR_PREFIX_PATTERN}" /tmp/terraform_apply.log || true
+              grep -E "${RESOURCE_EXISTS_PATTERN}" /tmp/terraform_apply.log || true
+              echo ""
+            fi
+            
             echo "Please review the error output above for details."
             echo ""
             echo "The infrastructure may be in a partial state."
