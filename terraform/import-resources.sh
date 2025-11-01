@@ -123,7 +123,7 @@ import_resource() {
     fi
 }
 
-# Track success/failure/skipped
+# Track import results (success includes both successful imports and expected skips)
 TOTAL=0
 SUCCESS=0
 FAILED=0
