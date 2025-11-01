@@ -470,7 +470,9 @@ jobs:
           fi
           
           # Define error patterns for resource conflicts
-          RESOURCE_EXISTS_PATTERN="EntityAlreadyExists|BucketAlreadyExists|ResourceAlreadyExists|ResourceInUseException"
+          # Using word boundaries to ensure exact matches and avoid false positives
+          RESOURCE_EXISTS_PATTERN="\b(EntityAlreadyExists|BucketAlreadyExists|ResourceAlreadyExists|ResourceInUseException)\b"
+          ERROR_PREFIX_PATTERN="Error: creating.*already exists"
           
           # Run terraform apply and capture output to a file for analysis
           if ! terraform apply -auto-approve tfplan 2>&1 | tee /tmp/terraform_apply.log; then
@@ -497,7 +499,9 @@ jobs:
               echo "   terraform apply"
               echo ""
               echo "Resources that failed to import:"
-              grep -E "Error: creating.*already exists|${RESOURCE_EXISTS_PATTERN}" /tmp/terraform_apply.log || true
+              # Show both error patterns separately for clarity
+              grep -E "${ERROR_PREFIX_PATTERN}" /tmp/terraform_apply.log || true
+              grep -E "${RESOURCE_EXISTS_PATTERN}" /tmp/terraform_apply.log || true
               echo ""
             fi
             
