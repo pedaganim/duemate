@@ -105,11 +105,13 @@ import {
 # 5. Finally importing the domain
 #
 # If you need to manually import these resources:
-#   USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='<pool-name>'].Id" --output text)
+#   USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='duemate-production-users'].Id" --output text)
 #   terraform import module.cognito.aws_cognito_user_pool.main $USER_POOL_ID
 #   CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id $USER_POOL_ID --max-results 60 --query "UserPoolClients[0].ClientId" --output text)
 #   terraform import module.cognito.aws_cognito_user_pool_client.main $USER_POOL_ID/$CLIENT_ID
-#   terraform import module.cognito.aws_cognito_user_pool_domain.main <domain-name>
+#   terraform import module.cognito.aws_cognito_user_pool_domain.main duemate-production-users
+# 
+# Replace 'duemate-production' with your actual name prefix (${project_name}-${environment})
 
 # DynamoDB Table
 import {
