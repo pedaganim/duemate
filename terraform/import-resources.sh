@@ -218,16 +218,17 @@ if [ -n "$USER_POOL_ID" ]; then
     else
         print_warn "Cognito User Pool Client not found, Terraform will create it"
     fi
+    
+    # Import Cognito User Pool Domain
+    # Domain import must happen AFTER user pool import to avoid "Domain already associated" errors
+    TOTAL=$((TOTAL + 1))
+    import_resource "aws_cognito_user_pool_domain" \
+        "module.cognito.aws_cognito_user_pool_domain.main" \
+        "${NAME_PREFIX}-users" \
+        "Cognito User Pool Domain" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 else
     print_warn "Cognito User Pool not found, Terraform will create it"
 fi
-
-# Import Cognito User Pool Domain
-TOTAL=$((TOTAL + 1))
-import_resource "aws_cognito_user_pool_domain" \
-    "module.cognito.aws_cognito_user_pool_domain.main" \
-    "${NAME_PREFIX}-users" \
-    "Cognito User Pool Domain" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
 # Import DynamoDB Table
 TOTAL=$((TOTAL + 1))

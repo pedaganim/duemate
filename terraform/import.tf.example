@@ -94,11 +94,22 @@ import {
 # If you need to manually import this resource:
 #   terraform import module.api_gateway.aws_cloudwatch_log_group.api_gateway[0] <log-group-name>
 
-# Cognito User Pool Domain
-import {
-  to = module.cognito.aws_cognito_user_pool_domain.main
-  id = "${local.import_name_prefix}-users"
-}
+# Cognito User Pool Domain (REMOVED FROM IMPORT.TF - handled by import-resources.sh)
+# This import block has been removed because Cognito imports require dynamic lookups.
+# The user pool ID must be looked up by name, and the domain depends on the pool being
+# imported first. The import-resources.sh script handles this correctly by:
+# 1. Looking up the user pool ID by name
+# 2. Importing the user pool first
+# 3. Looking up the client ID
+# 4. Importing the client
+# 5. Finally importing the domain
+#
+# If you need to manually import these resources:
+#   USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='<pool-name>'].Id" --output text)
+#   terraform import module.cognito.aws_cognito_user_pool.main $USER_POOL_ID
+#   CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id $USER_POOL_ID --max-results 60 --query "UserPoolClients[0].ClientId" --output text)
+#   terraform import module.cognito.aws_cognito_user_pool_client.main $USER_POOL_ID/$CLIENT_ID
+#   terraform import module.cognito.aws_cognito_user_pool_domain.main <domain-name>
 
 # DynamoDB Table
 import {
