@@ -198,6 +198,112 @@ jobs:
         working-directory: ./terraform
         run: terraform validate
 
+      - name: Detect and Enable Import for Existing Resources
+        working-directory: ./terraform
+        run: |
+          set -e
+          
+          echo "=============================================="
+          echo "Checking for Existing AWS Resources"
+          echo "=============================================="
+          echo ""
+          
+          # Set environment variables
+          ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+          PROJECT_NAME="duemate"
+          NAME_PREFIX="${PROJECT_NAME}-${ENVIRONMENT}"
+          
+          echo "Environment: ${ENVIRONMENT}"
+          echo "Name Prefix: ${NAME_PREFIX}"
+          echo ""
+          
+          # Function to check if a resource exists
+          check_resource_exists() {
+            local resource_type=$1
+            local resource_name=$2
+            
+            case $resource_type in
+              "dynamodb")
+                aws dynamodb describe-table --table-name "$resource_name" &>/dev/null && return 0 || return 1
+                ;;
+              "s3")
+                aws s3api head-bucket --bucket "$resource_name" &>/dev/null && return 0 || return 1
+                ;;
+              "iam-role")
+                aws iam get-role --role-name "$resource_name" &>/dev/null && return 0 || return 1
+                ;;
+              "iam-policy")
+                local account_id=$(aws sts get-caller-identity --query Account --output text)
+                aws iam get-policy --policy-arn "arn:aws:iam::${account_id}:policy/${resource_name}" &>/dev/null && return 0 || return 1
+                ;;
+            esac
+          }
+          
+          # Check for key resources that indicate existing infrastructure
+          RESOURCES_EXIST=false
+          
+          echo "Checking DynamoDB table: ${NAME_PREFIX}-main"
+          if check_resource_exists "dynamodb" "${NAME_PREFIX}-main"; then
+            echo "✓ DynamoDB table exists"
+            RESOURCES_EXIST=true
+          else
+            echo "✗ DynamoDB table does not exist"
+          fi
+          
+          echo "Checking S3 bucket: ${NAME_PREFIX}-frontend"
+          if check_resource_exists "s3" "${NAME_PREFIX}-frontend"; then
+            echo "✓ S3 frontend bucket exists"
+            RESOURCES_EXIST=true
+          else
+            echo "✗ S3 frontend bucket does not exist"
+          fi
+          
+          echo "Checking IAM role: ${NAME_PREFIX}-lambda-execution"
+          if check_resource_exists "iam-role" "${NAME_PREFIX}-lambda-execution"; then
+            echo "✓ IAM Lambda role exists"
+            RESOURCES_EXIST=true
+          else
+            echo "✗ IAM Lambda role does not exist"
+          fi
+          
+          echo ""
+          
+          # Enable import configuration if resources exist
+          if [ "$RESOURCES_EXIST" = true ]; then
+            echo "=============================================="
+            echo "⚠️  Existing Resources Detected"
+            echo "=============================================="
+            echo ""
+            echo "Enabling automatic import configuration..."
+            
+            if [ -f "import.tf.example" ]; then
+              cp import.tf.example import.tf
+              echo "✅ Import configuration enabled (import.tf)"
+              echo ""
+              echo "Terraform will automatically import existing resources"
+              echo "to prevent 'EntityAlreadyExists' errors."
+            else
+              echo "⚠️  Warning: import.tf.example not found"
+              echo "Proceeding without import configuration"
+            fi
+          else
+            echo "=============================================="
+            echo "✅ No Existing Resources Detected"
+            echo "=============================================="
+            echo ""
+            echo "This appears to be a new deployment."
+            echo "Terraform will create all resources from scratch."
+            
+            # Ensure import.tf is not present for new deployments
+            if [ -f "import.tf" ]; then
+              echo ""
+              echo "Removing import.tf to prevent import failures..."
+              rm -f import.tf
+            fi
+          fi
+          
+          echo ""
+
       - name: Terraform Plan
         working-directory: ./terraform
         run: |
