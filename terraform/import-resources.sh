@@ -104,29 +104,29 @@ import_resource() {
         local error_content=$(cat /tmp/import.log)
         
         # Check if resource doesn't exist in AWS (expected - Terraform will create it)
-        if echo "$error_content" | grep -qE "(Cannot import non-existent remote object|does not exist|NotFound)"; then
+        if echo "$error_content" | grep -qiE "(Cannot import non-existent|does not exist|NotFound|NoSuchEntity|not found|ResourceNotFoundException)"; then
             print_warn "$resource_name does not exist in AWS. Terraform will create it."
             return 0
         fi
         
         # Check if resource doesn't exist in configuration (expected for conditional resources with count = 0)
-        if echo "$error_content" | grep -qE "(resource address.*does not exist|No instances|index out of range|does not have a resource)"; then
+        if echo "$error_content" | grep -qiE "(resource address.*does not exist|No instances|index out of range|does not have a resource|is not in the configuration|resource has not been configured|cannot be imported|module.*does not have)"; then
             print_warn "$resource_name is not in the Terraform configuration (likely count = 0). Skipping import."
             return 0
         fi
         
         # All other errors are unexpected and should be reported
         print_error "Failed to import $resource_name"
+        print_error "Error details:"
         cat /tmp/import.log
         return 1
     fi
 }
 
-# Track success/failure
+# Track success/failure/skipped
 TOTAL=0
 SUCCESS=0
 FAILED=0
-SKIPPED=0
 
 # Import IAM Role
 TOTAL=$((TOTAL + 1))
@@ -334,13 +334,14 @@ echo ""
 print_info "============================================"
 print_info "Import Summary"
 print_info "============================================"
-print_info "Total resources: $TOTAL"
-print_info "Successfully imported: $SUCCESS"
+print_info "Total resources attempted: $TOTAL"
+print_info "Successfully imported or skipped: $SUCCESS"
 if [ $FAILED -gt 0 ]; then
-    print_error "Failed: $FAILED"
+    print_error "Failed to import: $FAILED resources"
 fi
 print_info "============================================"
 
+# Determine exit code based on failures
 if [ $FAILED -gt 0 ]; then
     print_error "Some resources failed to import. Please review the errors above."
     echo ""
@@ -348,14 +349,19 @@ if [ $FAILED -gt 0 ]; then
     print_info "1. Check the errors for resources that failed to import"
     print_info "2. Verify the resource names and IDs are correct"
     print_info "3. Run 'terraform plan' to see what changes are needed"
+    print_info "4. If 'terraform plan' succeeds, the import.tf file may handle the remaining imports"
+    echo ""
+    # Note: We still exit with error code to signal that manual intervention may be needed
+    # The GitHub workflow is configured to handle this gracefully
     exit 1
 else
-    print_info "All resources imported successfully!"
+    print_info "All resources imported successfully or appropriately skipped!"
     echo ""
     print_info "Next steps:"
     print_info "1. Run 'terraform plan' to verify the state matches your infrastructure"
     print_info "2. If the plan shows unexpected changes, review and adjust the configuration"
     print_info "3. Run 'terraform apply' when ready to sync any remaining differences"
+    exit 0
 fi
 
 # Cleanup

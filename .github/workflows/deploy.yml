@@ -332,7 +332,60 @@ jobs:
             echo "Enabling automatic import configuration..."
             
             if [ -f "import.tf.example" ]; then
+              # Generate dynamic import.tf with only resources that exist in AWS
+              echo "Generating dynamic import.tf based on existing AWS resources..."
+              
+              # Start with the base import.tf.example
               cp import.tf.example import.tf
+              
+              # Check if conditional resources exist and add import blocks if needed
+              # These are the resources that were removed from import.tf.example
+              
+              # Check for API Gateway CloudWatch role
+              if aws iam get-role --role-name "${NAME_PREFIX}-api-cloudwatch-role" >/dev/null 2>&1; then
+                echo "✓ Found API Gateway CloudWatch role, adding import block"
+                cat >> import.tf <<EOF
+
+# API Gateway CloudWatch Role (detected in AWS)
+import {
+  to = module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]
+  id = "${NAME_PREFIX}-api-cloudwatch-role"
+}
+EOF
+              fi
+              
+              # Check for API Gateway CloudWatch log group
+              if aws logs describe-log-groups --log-group-name-prefix "/aws/apigateway/${NAME_PREFIX}-api" --query 'logGroups[0].logGroupName' --output text 2>/dev/null | grep -q "^/aws/apigateway/${NAME_PREFIX}-api$"; then
+                echo "✓ Found API Gateway log group, adding import block"
+                cat >> import.tf <<EOF
+
+# API Gateway CloudWatch Log Group (detected in AWS)
+import {
+  to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
+  id = "/aws/apigateway/${NAME_PREFIX}-api"
+}
+EOF
+              fi
+              
+              # Check for Cognito User Pool Domain
+              # We need to check if the domain exists by looking up the user pool first
+              USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='${NAME_PREFIX}-users'].Id" --output text 2>/dev/null || echo "")
+              if [ -n "$USER_POOL_ID" ]; then
+                # Check if domain exists for this pool
+                DOMAIN_EXISTS=$(aws cognito-idp describe-user-pool --user-pool-id "$USER_POOL_ID" --query 'UserPool.Domain' --output text 2>/dev/null || echo "")
+                if [ -n "$DOMAIN_EXISTS" ] && [ "$DOMAIN_EXISTS" != "None" ]; then
+                  echo "✓ Found Cognito User Pool Domain, adding import block"
+                  cat >> import.tf <<EOF
+
+# Cognito User Pool Domain (detected in AWS)
+import {
+  to = module.cognito.aws_cognito_user_pool_domain.main
+  id = "${NAME_PREFIX}-users"
+}
+EOF
+                fi
+              fi
+              
               echo "✅ Import configuration enabled (import.tf)"
               echo ""
               echo "Terraform will automatically import existing resources"
