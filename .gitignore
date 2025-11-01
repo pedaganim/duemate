@@ -52,4 +52,6 @@ build/
 .terraform.lock.hcl
 tfplan
 *.zip
-terraform
+# Terraform binary (not the terraform/ directory)
+/terraform
+!/terraform/
