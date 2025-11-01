@@ -58,17 +58,40 @@ terraform import module.cognito.aws_cognito_user_pool_domain.main "${NAME_PREFIX
 ## How It Works Now
 
 1. **Workflow detects existing resources** - Checks AWS for key resources (DynamoDB tables, S3 buckets, IAM roles)
-2. **Enables import configuration** - Copies `import.tf.example` to `import.tf`
+2. **Dynamically generates import.tf** - Starts with `import.tf.example` and adds conditional imports
+   - Checks if API Gateway CloudWatch role exists in AWS → adds import block if found
+   - Checks if API Gateway CloudWatch log group exists in AWS → adds import block if found
+   - Checks if Cognito User Pool Domain exists in AWS → adds import block if found
+   - This ensures import blocks only reference resources that actually exist
 3. **Runs import script immediately** - Executes `import-resources.sh` BEFORE terraform plan
    - Imports ALL resources (including conditional ones like API Gateway CloudWatch role/log group)
    - Dynamically discovers resource IDs for Cognito user pool and client
    - Handles missing resources gracefully (returns success to let Terraform create them)
    - Handles conditional resources (count-based) that may not exist in configuration
-4. **Import blocks provide backup** - import.tf contains import blocks for non-conditional resources only
-   - Does NOT include conditional resources (API Gateway CloudWatch, Cognito domain)
-   - These must be handled by import-resources.sh with dynamic lookup
-5. **Terraform plan runs** - Sees resources in state, doesn't try to recreate them
-6. **Terraform apply succeeds** - No "EntityAlreadyExists" errors!
+4. **Terraform plan runs** - Import blocks automatically import any remaining resources
+   - Resources imported by the script are already in state (skipped by import blocks)
+   - Resources missed by the script are imported by the import blocks
+   - Provides two layers of import protection
+5. **Terraform apply succeeds** - No "EntityAlreadyExists" errors!
+
+## Key Improvements (Latest Version)
+
+### Dynamic Import Block Generation
+The workflow now dynamically generates `import.tf` by:
+1. Starting with the base `import.tf.example` (contains non-conditional resources)
+2. Checking AWS for conditional resources that actually exist
+3. Adding import blocks ONLY for resources found in AWS
+
+This solves the problem where import blocks for conditional resources would fail if the resources didn't exist in the Terraform configuration (count=0).
+
+**Example:** If `manage_account_settings = false`, the API Gateway CloudWatch role doesn't exist in the configuration. The old approach would fail during `terraform plan` because import blocks can't reference non-existent resources. The new approach only adds the import block if the role actually exists in AWS AND in the configuration (count=1).
+
+### Improved Error Handling
+The import script now has:
+- Case-insensitive error pattern matching (handles more AWS error variations)
+- More comprehensive error patterns for "resource doesn't exist" scenarios
+- Better logging and error messages
+- Graceful handling of expected vs unexpected failures
 
 ## Testing the Fix
 
@@ -173,7 +196,18 @@ This separation ensures that:
 
 ## Files Changed
 
+### Latest Version (Dynamic Import Block Generation)
+- `.github/workflows/deploy.yml` - Added dynamic import.tf generation based on AWS resource detection
+  - Checks for API Gateway CloudWatch role and log group existence
+  - Checks for Cognito domain existence
+  - Only adds import blocks for resources that actually exist
+- `terraform/import-resources.sh` - Improved error pattern matching
+  - Case-insensitive error detection
+  - More comprehensive error patterns
+  - Better error messages and logging
+- `terraform/IMPORT_FIX.md` - Updated documentation
+
+### Previous Fixes
 - `terraform/import.tf.example` - Fixed to use variables instead of locals, removed conditional import blocks
 - `terraform/import-resources.sh` - Added Cognito user pool/client import logic
 - `.github/workflows/deploy.yml` - Moved import execution before terraform plan
-- `terraform/IMPORT_FIX.md` - Updated documentation
