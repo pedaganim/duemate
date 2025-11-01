@@ -32,40 +32,47 @@
 # Data source to get current AWS account ID
 data "aws_caller_identity" "current" {}
 
+# Local variables for import blocks
+# Note: We need to redefine this here because import blocks cannot reference
+# locals from main.tf (they are evaluated in a different phase)
+locals {
+  import_name_prefix = var.customer_name != null ? "${var.project_name}-${var.customer_name}-${var.environment}" : "${var.project_name}-${var.environment}"
+}
+
 # IAM Role - Lambda Execution
 import {
   to = aws_iam_role.lambda_execution
-  id = "${local.name_prefix}-lambda-execution"
+  id = "${local.import_name_prefix}-lambda-execution"
 }
 
 # IAM Policy - Lambda DynamoDB Access
 import {
   to = aws_iam_policy.lambda_dynamodb
-  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name_prefix}-lambda-dynamodb"
+  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.import_name_prefix}-lambda-dynamodb"
 }
 
 # IAM Policy - Lambda S3 Access
 import {
   to = aws_iam_policy.lambda_s3
-  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name_prefix}-lambda-s3"
+  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.import_name_prefix}-lambda-s3"
 }
 
 # IAM Policy - Lambda SQS Access
 import {
   to = aws_iam_policy.lambda_sqs
-  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name_prefix}-lambda-sqs"
+  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.import_name_prefix}-lambda-sqs"
 }
 
 # IAM Policy - Lambda SES Access
 import {
   to = aws_iam_policy.lambda_ses
-  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name_prefix}-lambda-ses"
+  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.import_name_prefix}-lambda-ses"
 }
 
 # IAM Policy - Lambda Secrets Manager Access
 import {
   to = aws_iam_policy.lambda_secrets
-  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name_prefix}-lambda-secrets"
+  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.import_name_prefix}-lambda-secrets"
 }
 
 # IAM Role - API Gateway CloudWatch (conditional)
@@ -73,7 +80,7 @@ import {
 # This requires manage_account_settings = true in the API Gateway module (default is true)
 import {
   to = module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]
-  id = "${local.name_prefix}-api-cloudwatch-role"
+  id = "${local.import_name_prefix}-api-cloudwatch-role"
 }
 
 # CloudWatch Log Group - API Gateway (conditional)
@@ -81,101 +88,101 @@ import {
 # This requires var.enable_api_gateway_logging = true in the root module configuration
 import {
   to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
-  id = "/aws/apigateway/${local.name_prefix}-api"
+  id = "/aws/apigateway/${local.import_name_prefix}-api"
 }
 
 # Cognito User Pool Domain
 import {
   to = module.cognito.aws_cognito_user_pool_domain.main
-  id = "${local.name_prefix}-users"
+  id = "${local.import_name_prefix}-users"
 }
 
 # DynamoDB Table
 import {
   to = module.dynamodb.aws_dynamodb_table.main
-  id = "${local.name_prefix}-main"
+  id = "${local.import_name_prefix}-main"
 }
 
 # S3 Bucket - Frontend
 import {
   to = module.s3.aws_s3_bucket.frontend
-  id = "${local.name_prefix}-frontend"
+  id = "${local.import_name_prefix}-frontend"
 }
 
 # S3 Bucket - Invoices
 import {
   to = module.s3.aws_s3_bucket.invoices
-  id = "${local.name_prefix}-invoices"
+  id = "${local.import_name_prefix}-invoices"
 }
 
 # S3 Bucket - Assets
 import {
   to = module.s3.aws_s3_bucket.assets
-  id = "${local.name_prefix}-assets"
+  id = "${local.import_name_prefix}-assets"
 }
 
 # Lambda Function - Invoice Create
 import {
   to = module.lambda_functions.aws_lambda_function.invoice_create
-  id = "${local.name_prefix}-invoice-create"
+  id = "${local.import_name_prefix}-invoice-create"
 }
 
 # CloudWatch Log Group - Invoice Create
 import {
   to = module.lambda_functions.aws_cloudwatch_log_group.invoice_create
-  id = "/aws/lambda/${local.name_prefix}-invoice-create"
+  id = "/aws/lambda/${local.import_name_prefix}-invoice-create"
 }
 
 # Lambda Function - Invoice Get
 import {
   to = module.lambda_functions.aws_lambda_function.invoice_get
-  id = "${local.name_prefix}-invoice-get"
+  id = "${local.import_name_prefix}-invoice-get"
 }
 
 # CloudWatch Log Group - Invoice Get
 import {
   to = module.lambda_functions.aws_cloudwatch_log_group.invoice_get
-  id = "/aws/lambda/${local.name_prefix}-invoice-get"
+  id = "/aws/lambda/${local.import_name_prefix}-invoice-get"
 }
 
 # Lambda Function - Reminder Check
 import {
   to = module.lambda_functions.aws_lambda_function.reminder_check
-  id = "${local.name_prefix}-reminder-check"
+  id = "${local.import_name_prefix}-reminder-check"
 }
 
 # CloudWatch Log Group - Reminder Check
 import {
   to = module.lambda_functions.aws_cloudwatch_log_group.reminder_check
-  id = "/aws/lambda/${local.name_prefix}-reminder-check"
+  id = "/aws/lambda/${local.import_name_prefix}-reminder-check"
 }
 
 # Lambda Function - Notification Worker
 import {
   to = module.lambda_functions.aws_lambda_function.notification_worker
-  id = "${local.name_prefix}-notification-worker"
+  id = "${local.import_name_prefix}-notification-worker"
 }
 
 # CloudWatch Log Group - Notification Worker
 import {
   to = module.lambda_functions.aws_cloudwatch_log_group.notification_worker
-  id = "/aws/lambda/${local.name_prefix}-notification-worker"
+  id = "/aws/lambda/${local.import_name_prefix}-notification-worker"
 }
 
 # EventBridge Rule - Reminder Check
 import {
   to = module.eventbridge.aws_cloudwatch_event_rule.reminder_check
-  id = "${local.name_prefix}-reminder-check"
+  id = "${local.import_name_prefix}-reminder-check"
 }
 
 # EventBridge Target - Reminder Check
 import {
   to = module.eventbridge.aws_cloudwatch_event_target.reminder_check
-  id = "${local.name_prefix}-reminder-check/ReminderCheckLambda"
+  id = "${local.import_name_prefix}-reminder-check/ReminderCheckLambda"
 }
 
 # Lambda Permission - EventBridge to invoke Reminder Check
 import {
   to = module.eventbridge.aws_lambda_permission.allow_eventbridge
-  id = "${local.name_prefix}-reminder-check/${local.name_prefix}-AllowExecutionFromEventBridge"
+  id = "${local.import_name_prefix}-reminder-check/${local.import_name_prefix}-AllowExecutionFromEventBridge"
 }

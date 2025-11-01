@@ -181,6 +181,40 @@ import_resource "aws_cloudwatch_log_group" \
     "/aws/apigateway/${NAME_PREFIX}-api" \
     "CloudWatch Log Group (api_gateway)" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
+# Import Cognito User Pool
+# We need to get the user pool ID by listing pools and filtering by name
+# Note: This lists up to 60 user pools. For AWS accounts with more pools,
+# you may need to manually import: terraform import module.cognito.aws_cognito_user_pool.main <pool-id>
+print_info "Looking up Cognito User Pool ID for ${NAME_PREFIX}-users..."
+USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='${NAME_PREFIX}-users'].Id" --output text 2>/dev/null || echo "")
+
+if [ -n "$USER_POOL_ID" ]; then
+    print_info "Found User Pool ID: $USER_POOL_ID"
+    TOTAL=$((TOTAL + 1))
+    import_resource "aws_cognito_user_pool" \
+        "module.cognito.aws_cognito_user_pool.main" \
+        "$USER_POOL_ID" \
+        "Cognito User Pool" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+    
+    # Import Cognito User Pool Client
+    # Get the client ID from the user pool
+    print_info "Looking up Cognito User Pool Client ID..."
+    CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id "$USER_POOL_ID" --max-results 60 --query "UserPoolClients[?ClientName=='${NAME_PREFIX}-users-client'].ClientId" --output text 2>/dev/null || echo "")
+    
+    if [ -n "$CLIENT_ID" ]; then
+        print_info "Found Client ID: $CLIENT_ID"
+        TOTAL=$((TOTAL + 1))
+        import_resource "aws_cognito_user_pool_client" \
+            "module.cognito.aws_cognito_user_pool_client.main" \
+            "${USER_POOL_ID}/${CLIENT_ID}" \
+            "Cognito User Pool Client" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+    else
+        print_warn "Cognito User Pool Client not found, Terraform will create it"
+    fi
+else
+    print_warn "Cognito User Pool not found, Terraform will create it"
+fi
+
 # Import Cognito User Pool Domain
 TOTAL=$((TOTAL + 1))
 import_resource "aws_cognito_user_pool_domain" \
