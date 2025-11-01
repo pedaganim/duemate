@@ -75,27 +75,43 @@ import {
   id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.import_name_prefix}-lambda-secrets"
 }
 
-# IAM Role - API Gateway CloudWatch (conditional)
-# Note: This import block will only be active if the resource is created (count = 1)
-# This requires manage_account_settings = true in the API Gateway module (default is true)
-import {
-  to = module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]
-  id = "${local.import_name_prefix}-api-cloudwatch-role"
-}
+# IAM Role - API Gateway CloudWatch (conditional resource - REMOVED FROM IMPORT.TF)
+# This import block has been removed because it references a conditional resource (count-based).
+# If manage_account_settings = false in the API Gateway module, the resource doesn't exist
+# in the Terraform configuration, causing import blocks to fail during terraform plan.
+# This resource is imported by the import-resources.sh script instead, which handles
+# conditional resources gracefully by checking if they exist in AWS first.
+#
+# If you need to manually import this resource:
+#   terraform import module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0] <role-name>
 
-# CloudWatch Log Group - API Gateway (conditional)
-# Note: This import block will only be active if the resource is created (count = 1)
-# This requires var.enable_api_gateway_logging = true in the root module configuration
-import {
-  to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
-  id = "/aws/apigateway/${local.import_name_prefix}-api"
-}
+# CloudWatch Log Group - API Gateway (conditional resource - REMOVED FROM IMPORT.TF)
+# This import block has been removed because it references a conditional resource (count-based).
+# If enable_api_gateway_logging = false, the resource doesn't exist in the configuration,
+# causing import blocks to fail during terraform plan.
+# This resource is imported by the import-resources.sh script instead.
+#
+# If you need to manually import this resource:
+#   terraform import module.api_gateway.aws_cloudwatch_log_group.api_gateway[0] <log-group-name>
 
-# Cognito User Pool Domain
-import {
-  to = module.cognito.aws_cognito_user_pool_domain.main
-  id = "${local.import_name_prefix}-users"
-}
+# Cognito User Pool Domain (REMOVED FROM IMPORT.TF - handled by import-resources.sh)
+# This import block has been removed because Cognito imports require dynamic lookups.
+# The user pool ID must be looked up by name, and the domain depends on the pool being
+# imported first. The import-resources.sh script handles this correctly by:
+# 1. Looking up the user pool ID by name
+# 2. Importing the user pool first
+# 3. Looking up the client ID
+# 4. Importing the client
+# 5. Finally importing the domain
+#
+# If you need to manually import these resources:
+#   USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='duemate-production-users'].Id" --output text)
+#   terraform import module.cognito.aws_cognito_user_pool.main $USER_POOL_ID
+#   CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id $USER_POOL_ID --max-results 60 --query "UserPoolClients[0].ClientId" --output text)
+#   terraform import module.cognito.aws_cognito_user_pool_client.main $USER_POOL_ID/$CLIENT_ID
+#   terraform import module.cognito.aws_cognito_user_pool_domain.main duemate-production-users
+# 
+# Replace 'duemate-production' with your actual name prefix (${project_name}-${environment})
 
 # DynamoDB Table
 import {

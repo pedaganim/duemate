@@ -340,6 +340,16 @@ jobs:
               
               # IMPORTANT: Run manual import BEFORE terraform plan
               # This ensures resources are in state before plan runs
+              # 
+              # Import Strategy:
+              # - import-resources.sh: Handles ALL resources, including conditional ones
+              #   and resources requiring dynamic AWS API lookups (Cognito)
+              # - import.tf: Provides backup imports for non-conditional resources
+              #   (activated during terraform plan if resources are missing from state)
+              # 
+              # The script may partially fail (e.g., conditional resources with count=0),
+              # which is expected. It returns success for resources that don't exist in
+              # AWS or in the configuration, letting Terraform create them.
               echo ""
               echo "Running manual import script to pre-populate state..."
               chmod +x import-resources.sh
@@ -347,14 +357,16 @@ jobs:
               if [ -n "$CUSTOMER_NAME" ] && [ "$CUSTOMER_NAME" != "null" ]; then
                 echo "Running: ./import-resources.sh $ENVIRONMENT $PROJECT_NAME $CUSTOMER_NAME"
                 ./import-resources.sh "$ENVIRONMENT" "$PROJECT_NAME" "$CUSTOMER_NAME" || {
-                  echo "⚠️  Warning: Some imports may have failed"
-                  echo "Terraform plan will attempt to import remaining resources"
+                  echo "⚠️  Warning: Some imports may have failed in import-resources.sh"
+                  echo "Terraform will use import.tf for remaining non-conditional resources"
+                  echo "Check the import script output above for details"
                 }
               else
                 echo "Running: ./import-resources.sh $ENVIRONMENT $PROJECT_NAME"
                 ./import-resources.sh "$ENVIRONMENT" "$PROJECT_NAME" || {
-                  echo "⚠️  Warning: Some imports may have failed"
-                  echo "Terraform plan will attempt to import remaining resources"
+                  echo "⚠️  Warning: Some imports may have failed in import-resources.sh"
+                  echo "Terraform will use import.tf for remaining non-conditional resources"
+                  echo "Check the import script output above for details"
                 }
               fi
             else

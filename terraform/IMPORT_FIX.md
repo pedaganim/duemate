@@ -60,10 +60,15 @@ terraform import module.cognito.aws_cognito_user_pool_domain.main "${NAME_PREFIX
 1. **Workflow detects existing resources** - Checks AWS for key resources (DynamoDB tables, S3 buckets, IAM roles)
 2. **Enables import configuration** - Copies `import.tf.example` to `import.tf`
 3. **Runs import script immediately** - Executes `import-resources.sh` BEFORE terraform plan
-4. **Import script dynamically discovers resource IDs** - For Cognito and other resources that need lookups
-5. **Resources imported into state** - All existing resources are now tracked by Terraform
-6. **Terraform plan runs** - Sees resources in state, doesn't try to recreate them
-7. **Terraform apply succeeds** - No "EntityAlreadyExists" errors!
+   - Imports ALL resources (including conditional ones like API Gateway CloudWatch role/log group)
+   - Dynamically discovers resource IDs for Cognito user pool and client
+   - Handles missing resources gracefully (returns success to let Terraform create them)
+   - Handles conditional resources (count-based) that may not exist in configuration
+4. **Import blocks provide backup** - import.tf contains import blocks for non-conditional resources only
+   - Does NOT include conditional resources (API Gateway CloudWatch, Cognito domain)
+   - These must be handled by import-resources.sh with dynamic lookup
+5. **Terraform plan runs** - Sees resources in state, doesn't try to recreate them
+6. **Terraform apply succeeds** - No "EntityAlreadyExists" errors!
 
 ## Testing the Fix
 
@@ -121,8 +126,54 @@ terraform import module.cognito.aws_cognito_user_pool_client.main <pool-id>/<cli
 terraform import module.cognito.aws_cognito_user_pool_domain.main <domain-name>
 ```
 
+### 4. Conditional Import Blocks Failed During Plan
+**Problem:** Import blocks for conditional resources (with `count`) cause `terraform plan` to fail when the resource doesn't exist in the configuration.
+
+Example: If `manage_account_settings = false`, then `module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]` doesn't exist in the configuration (count = 0). Import blocks that reference `[0]` will fail.
+
+**Solution:** Removed conditional import blocks from `import.tf.example`. The manual import script (`import-resources.sh`) already handles these gracefully:
+- Checks if resource exists in AWS before importing
+- Returns success even if resource doesn't exist (Terraform will create it)
+- Only fails if import fails for other reasons
+
+Conditional resources removed from import.tf:
+- `module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]`
+- `module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]`
+
+### 5. Cognito Domain Import Without User Pool
+**Problem:** import.tf.example tried to import the Cognito domain but not the user pool. The domain import fails with "Domain already associated with another user pool" because the user pool ID is not in Terraform state.
+
+**Solution:** Removed Cognito domain from import.tf.example since it requires:
+1. Dynamic lookup of user pool ID by name
+2. User pool to be imported first
+3. User pool client to be imported second
+4. Domain to be imported last
+
+The import-resources.sh script now handles all Cognito imports in the correct order within a conditional block.
+
+## Import Strategy
+
+### Resources Imported by import.tf (Non-conditional, static IDs)
+These resources are always created and have static or variable-based names:
+- IAM Roles and Policies (lambda execution, policies for DynamoDB, S3, SQS, SES, Secrets Manager)
+- DynamoDB Table
+- S3 Buckets (frontend, invoices, assets)
+- Lambda Functions and their CloudWatch Log Groups
+- EventBridge Rules, Targets, and Permissions
+
+### Resources Imported by import-resources.sh Only (Conditional or Dynamic)
+These resources require dynamic lookups or are conditional:
+- **API Gateway CloudWatch Role and Log Group** (conditional: only if manage_account_settings = true / enable_logging = true)
+- **Cognito User Pool, Client, and Domain** (require AWS API calls to look up IDs)
+
+This separation ensures that:
+- import.tf provides fast, declarative imports for predictable resources
+- import-resources.sh handles complex cases requiring AWS API calls or conditional logic
+- terraform plan never fails due to conditional resources
+
 ## Files Changed
 
-- `terraform/import.tf.example` - Fixed to use variables instead of locals
+- `terraform/import.tf.example` - Fixed to use variables instead of locals, removed conditional import blocks
 - `terraform/import-resources.sh` - Added Cognito user pool/client import logic
 - `.github/workflows/deploy.yml` - Moved import execution before terraform plan
+- `terraform/IMPORT_FIX.md` - Updated documentation

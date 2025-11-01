@@ -97,17 +97,28 @@ import_resource() {
         print_info "Successfully imported $resource_name"
         return 0
     else
-        # Check if resource doesn't exist in AWS
-        if grep -q "Cannot import non-existent remote object" /tmp/import.log || \
-           grep -q "does not exist" /tmp/import.log || \
-           grep -q "NotFound" /tmp/import.log; then
+        # Analyze the error to determine if it's expected or fatal
+        # Expected errors: resource doesn't exist in AWS or in configuration
+        # Fatal errors: authentication issues, invalid resource IDs, etc.
+        
+        local error_content=$(cat /tmp/import.log)
+        
+        # Check if resource doesn't exist in AWS (expected - Terraform will create it)
+        if echo "$error_content" | grep -qE "(Cannot import non-existent remote object|does not exist|NotFound)"; then
             print_warn "$resource_name does not exist in AWS. Terraform will create it."
             return 0
-        else
-            print_error "Failed to import $resource_name"
-            cat /tmp/import.log
-            return 1
         fi
+        
+        # Check if resource doesn't exist in configuration (expected for conditional resources with count = 0)
+        if echo "$error_content" | grep -qE "(resource address.*does not exist|No instances|index out of range|does not have a resource)"; then
+            print_warn "$resource_name is not in the Terraform configuration (likely count = 0). Skipping import."
+            return 0
+        fi
+        
+        # All other errors are unexpected and should be reported
+        print_error "Failed to import $resource_name"
+        cat /tmp/import.log
+        return 1
     fi
 }
 
@@ -211,16 +222,17 @@ if [ -n "$USER_POOL_ID" ]; then
     else
         print_warn "Cognito User Pool Client not found, Terraform will create it"
     fi
+    
+    # Import Cognito User Pool Domain
+    # Domain import must happen AFTER user pool import to avoid "Domain already associated" errors
+    TOTAL=$((TOTAL + 1))
+    import_resource "aws_cognito_user_pool_domain" \
+        "module.cognito.aws_cognito_user_pool_domain.main" \
+        "${NAME_PREFIX}-users" \
+        "Cognito User Pool Domain" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 else
     print_warn "Cognito User Pool not found, Terraform will create it"
 fi
-
-# Import Cognito User Pool Domain
-TOTAL=$((TOTAL + 1))
-import_resource "aws_cognito_user_pool_domain" \
-    "module.cognito.aws_cognito_user_pool_domain.main" \
-    "${NAME_PREFIX}-users" \
-    "Cognito User Pool Domain" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 
 # Import DynamoDB Table
 TOTAL=$((TOTAL + 1))
