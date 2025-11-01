@@ -68,8 +68,9 @@ import {
   id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name_prefix}-lambda-secrets"
 }
 
-# IAM Role - API Gateway CloudWatch (conditional - only if manage_account_settings is true)
+# IAM Role - API Gateway CloudWatch (conditional)
 # Note: This import block will only be active if the resource is created (count = 1)
+# This requires manage_account_settings = true in the API Gateway module (default is true)
 import {
   to = module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]
   id = "${local.name_prefix}-api-cloudwatch-role"
@@ -77,7 +78,7 @@ import {
 
 # CloudWatch Log Group - API Gateway (conditional)
 # Note: This import block will only be active if the resource is created (count = 1)
-# This requires enable_logging = true in the API Gateway module configuration
+# This requires var.enable_api_gateway_logging = true in the root module configuration
 import {
   to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
   id = "/aws/apigateway/${local.name_prefix}-api"
