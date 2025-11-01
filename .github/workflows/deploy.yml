@@ -492,7 +492,7 @@ jobs:
               echo "3. Verify that import.tf was properly enabled (check earlier logs)"
               echo "4. Manual fix: Use the import-resources.sh script:"
               echo "   cd terraform"
-              echo "   ./import-resources.sh ${{ needs.determine-environment.outputs.environment }} duemate"
+              echo "   ./import-resources.sh ${{ needs.determine-environment.outputs.environment }}"
               echo "   terraform plan"
               echo "   terraform apply"
               echo ""
