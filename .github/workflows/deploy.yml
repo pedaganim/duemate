@@ -337,6 +337,26 @@ jobs:
               echo ""
               echo "Terraform will automatically import existing resources"
               echo "to prevent 'EntityAlreadyExists' errors."
+              
+              # IMPORTANT: Run manual import BEFORE terraform plan
+              # This ensures resources are in state before plan runs
+              echo ""
+              echo "Running manual import script to pre-populate state..."
+              chmod +x import-resources.sh
+              
+              if [ -n "$CUSTOMER_NAME" ] && [ "$CUSTOMER_NAME" != "null" ]; then
+                echo "Running: ./import-resources.sh $ENVIRONMENT $PROJECT_NAME $CUSTOMER_NAME"
+                ./import-resources.sh "$ENVIRONMENT" "$PROJECT_NAME" "$CUSTOMER_NAME" || {
+                  echo "⚠️  Warning: Some imports may have failed"
+                  echo "Terraform plan will attempt to import remaining resources"
+                }
+              else
+                echo "Running: ./import-resources.sh $ENVIRONMENT $PROJECT_NAME"
+                ./import-resources.sh "$ENVIRONMENT" "$PROJECT_NAME" || {
+                  echo "⚠️  Warning: Some imports may have failed"
+                  echo "Terraform plan will attempt to import remaining resources"
+                }
+              fi
             else
               echo "⚠️  Warning: import.tf.example not found"
               echo "Proceeding without import configuration"
@@ -357,55 +377,6 @@ jobs:
             fi
           fi
           
-          echo ""
-
-      - name: Manual Import Fallback (if needed)
-        if: always()
-        working-directory: ./terraform
-        run: |
-          set +e  # Don't exit on error in this step
-          
-          echo "=============================================="
-          echo "Checking if Manual Import is Needed"
-          echo "=============================================="
-          echo ""
-          
-          # Only attempt manual import if import.tf exists (meaning resources were detected)
-          if [ ! -f "import.tf" ]; then
-            echo "No import.tf found - skipping manual import fallback"
-            echo "This is likely a new deployment."
-            exit 0
-          fi
-          
-          echo "import.tf detected - resources exist in AWS"
-          echo "Attempting pre-import using manual script to ensure clean state..."
-          echo ""
-          
-          # Make import script executable
-          chmod +x import-resources.sh
-          
-          # Determine name prefix (same logic as detection step)
-          if [ -f "terraform.tfvars" ] && grep -q "project_name" terraform.tfvars; then
-            PROJECT_NAME=$(grep "project_name" terraform.tfvars | sed 's/.*=\s*"\(.*\)".*/\1/')
-          else
-            PROJECT_NAME="duemate"
-          fi
-          
-          ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
-          CUSTOMER_NAME="${{ vars.CUSTOMER_NAME }}"
-          
-          # Run import script with appropriate parameters
-          if [ -n "$CUSTOMER_NAME" ] && [ "$CUSTOMER_NAME" != "null" ]; then
-            echo "Running: ./import-resources.sh $ENVIRONMENT $PROJECT_NAME $CUSTOMER_NAME"
-            ./import-resources.sh "$ENVIRONMENT" "$PROJECT_NAME" "$CUSTOMER_NAME" || true
-          else
-            echo "Running: ./import-resources.sh $ENVIRONMENT $PROJECT_NAME"
-            ./import-resources.sh "$ENVIRONMENT" "$PROJECT_NAME" || true
-          fi
-          
-          echo ""
-          echo "Manual import attempt completed (errors ignored)"
-          echo "Terraform plan will handle any remaining import needs"
           echo ""
 
       - name: Terraform Plan
