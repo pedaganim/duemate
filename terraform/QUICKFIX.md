@@ -76,7 +76,7 @@ terraform apply
 
 ## For More Details
 
-See [IMPORT_EXISTING_RESOURCES.md](./IMPORT_EXISTING_RESOURCES.md) for comprehensive documentation.
+See [IMPORT_EXISTING_RESOURCES.md](IMPORT_EXISTING_RESOURCES.md) for comprehensive documentation.
 
 ## Environment Options
 

@@ -75,7 +75,9 @@ import {
   id = "${local.name_prefix}-api-cloudwatch-role"
 }
 
-# CloudWatch Log Group - API Gateway
+# CloudWatch Log Group - API Gateway (conditional)
+# Note: This import block will only be active if the resource is created (count = 1)
+# This requires enable_logging = true in the API Gateway module configuration
 import {
   to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
   id = "/aws/apigateway/${local.name_prefix}-api"
