@@ -208,13 +208,33 @@ jobs:
           echo "=============================================="
           echo ""
           
-          # Set environment variables
-          ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
-          PROJECT_NAME="duemate"
-          NAME_PREFIX="${PROJECT_NAME}-${ENVIRONMENT}"
+          # Get AWS account ID once (optimization)
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           
+          # Read project name from terraform configuration to match what Terraform uses
+          # This ensures consistency with the Terraform naming scheme
+          PROJECT_NAME=$(grep -A 1 'variable "project_name"' variables.tf | grep 'default' | sed 's/.*"\(.*\)".*/\1/' || echo "duemate")
+          ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+          
+          # Check if customer_name is used (for whitelabel deployments)
+          # For standard deployments without customer name, the pattern is: project-environment
+          # For whitelabel deployments with customer name, the pattern is: project-customer-environment
+          # We'll check both patterns to be safe
+          CUSTOMER_NAME="${{ vars.CUSTOMER_NAME || '' }}"
+          
+          if [ -n "$CUSTOMER_NAME" ]; then
+            NAME_PREFIX="${PROJECT_NAME}-${CUSTOMER_NAME}-${ENVIRONMENT}"
+            echo "Whitelabel deployment detected"
+            echo "Customer: ${CUSTOMER_NAME}"
+          else
+            NAME_PREFIX="${PROJECT_NAME}-${ENVIRONMENT}"
+            echo "Standard deployment (no customer name)"
+          fi
+          
+          echo "Project: ${PROJECT_NAME}"
           echo "Environment: ${ENVIRONMENT}"
           echo "Name Prefix: ${NAME_PREFIX}"
+          echo "AWS Account: ${AWS_ACCOUNT_ID}"
           echo ""
           
           # Function to check if a resource exists
@@ -233,8 +253,7 @@ jobs:
                 aws iam get-role --role-name "$resource_name" &>/dev/null && return 0 || return 1
                 ;;
               "iam-policy")
-                local account_id=$(aws sts get-caller-identity --query Account --output text)
-                aws iam get-policy --policy-arn "arn:aws:iam::${account_id}:policy/${resource_name}" &>/dev/null && return 0 || return 1
+                aws iam get-policy --policy-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${resource_name}" &>/dev/null && return 0 || return 1
                 ;;
             esac
           }
