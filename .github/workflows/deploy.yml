@@ -352,7 +352,7 @@ jobs:
                 to = module.api_gateway.aws_iam_role.api_gateway_cloudwatch[0]
                 id = "${local.import_name_prefix}-api-cloudwatch-role"
               }
-              EOF
+EOF
               fi
               
               # Check for API Gateway CloudWatch log group
@@ -365,7 +365,7 @@ jobs:
                 to = module.api_gateway.aws_cloudwatch_log_group.api_gateway[0]
                 id = "/aws/apigateway/${local.import_name_prefix}-api"
               }
-              EOF
+EOF
               fi
               
               # Check for Cognito User Pool Domain
@@ -383,7 +383,7 @@ jobs:
                 to = module.cognito.aws_cognito_user_pool_domain.main
                 id = "${local.import_name_prefix}-users"
               }
-              EOF
+EOF
                 fi
               fi
               
