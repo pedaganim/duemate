@@ -691,7 +691,7 @@ jobs:
           chmod +x ./scripts/verify-deployment.sh
           ./scripts/verify-deployment.sh ${{ needs.determine-environment.outputs.environment }}
 
-      - name: Run Smoke Tests
+      - name: Skip Smoke Tests (Infrastructure Not Deployed)
         run: |
           echo "Skipping smoke tests - infrastructure deployment is disabled"
           echo "API endpoint will be available when infrastructure is deployed"
