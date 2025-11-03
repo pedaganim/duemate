@@ -413,6 +413,11 @@ jobs:
               
               echo "✅ Import configuration enabled (import.tf)"
               echo ""
+              echo "Generated import.tf contents:"
+              echo "======================================"
+              cat import.tf || echo "Failed to read import.tf"
+              echo "======================================"
+              echo ""
               echo "Terraform will automatically import existing resources"
               echo "to prevent 'EntityAlreadyExists' errors."
               
