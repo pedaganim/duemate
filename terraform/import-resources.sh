@@ -202,34 +202,42 @@ USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPoo
 if [ -n "$USER_POOL_ID" ]; then
     print_info "Found User Pool ID: $USER_POOL_ID"
     TOTAL=$((TOTAL + 1))
-    import_resource "aws_cognito_user_pool" \
+    if import_resource "aws_cognito_user_pool" \
         "module.cognito.aws_cognito_user_pool.main" \
         "$USER_POOL_ID" \
-        "Cognito User Pool" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
-    
-    # Import Cognito User Pool Client
-    # Get the client ID from the user pool
-    print_info "Looking up Cognito User Pool Client ID..."
-    CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id "$USER_POOL_ID" --max-results 60 --query "UserPoolClients[?ClientName=='${NAME_PREFIX}-users-client'].ClientId" --output text 2>/dev/null || echo "")
-    
-    if [ -n "$CLIENT_ID" ]; then
-        print_info "Found Client ID: $CLIENT_ID"
+        "Cognito User Pool"; then
+        SUCCESS=$((SUCCESS + 1))
+        
+        # Only import client and domain if user pool import succeeded
+        # This prevents "Domain already associated" errors when the user pool import fails
+        
+        # Import Cognito User Pool Client
+        # Get the client ID from the user pool
+        print_info "Looking up Cognito User Pool Client ID..."
+        CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id "$USER_POOL_ID" --max-results 60 --query "UserPoolClients[?ClientName=='${NAME_PREFIX}-users-client'].ClientId" --output text 2>/dev/null || echo "")
+        
+        if [ -n "$CLIENT_ID" ]; then
+            print_info "Found Client ID: $CLIENT_ID"
+            TOTAL=$((TOTAL + 1))
+            import_resource "aws_cognito_user_pool_client" \
+                "module.cognito.aws_cognito_user_pool_client.main" \
+                "${USER_POOL_ID}/${CLIENT_ID}" \
+                "Cognito User Pool Client" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+        else
+            print_warn "Cognito User Pool Client not found, Terraform will create it"
+        fi
+        
+        # Import Cognito User Pool Domain
+        # Domain import must happen AFTER user pool import to avoid "Domain already associated" errors
         TOTAL=$((TOTAL + 1))
-        import_resource "aws_cognito_user_pool_client" \
-            "module.cognito.aws_cognito_user_pool_client.main" \
-            "${USER_POOL_ID}/${CLIENT_ID}" \
-            "Cognito User Pool Client" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
+        import_resource "aws_cognito_user_pool_domain" \
+            "module.cognito.aws_cognito_user_pool_domain.main" \
+            "${NAME_PREFIX}-users" \
+            "Cognito User Pool Domain" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
     else
-        print_warn "Cognito User Pool Client not found, Terraform will create it"
+        FAILED=$((FAILED + 1))
+        print_warn "Skipping Cognito User Pool Client and Domain imports due to User Pool import failure"
     fi
-    
-    # Import Cognito User Pool Domain
-    # Domain import must happen AFTER user pool import to avoid "Domain already associated" errors
-    TOTAL=$((TOTAL + 1))
-    import_resource "aws_cognito_user_pool_domain" \
-        "module.cognito.aws_cognito_user_pool_domain.main" \
-        "${NAME_PREFIX}-users" \
-        "Cognito User Pool Domain" && SUCCESS=$((SUCCESS + 1)) || FAILED=$((FAILED + 1))
 else
     print_warn "Cognito User Pool not found, Terraform will create it"
 fi
