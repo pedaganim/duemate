@@ -368,10 +368,34 @@ jobs:
                 } >> import.tf || echo "⚠️  Warning: Failed to add API Gateway log group import block"
               fi
               
-              # Check for Cognito User Pool Domain
-              # We need to check if the domain exists by looking up the user pool first
+              # Check for Cognito User Pool and related resources
+              # We need to check if they exist by looking up the user pool first
               USER_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='${NAME_PREFIX}-users'].Id" --output text 2>/dev/null || echo "")
               if [ -n "$USER_POOL_ID" ]; then
+                echo "✓ Found Cognito User Pool, adding import block"
+                {
+                  echo ""
+                  echo "# Cognito User Pool (detected in AWS)"
+                  echo "import {"
+                  echo "  to = module.cognito.aws_cognito_user_pool.main"
+                  echo "  id = \"$USER_POOL_ID\""
+                  echo "}"
+                } >> import.tf || echo "⚠️  Warning: Failed to add Cognito user pool import block"
+                
+                # Check for Cognito User Pool Client
+                CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id "$USER_POOL_ID" --max-results 60 --query "UserPoolClients[?ClientName=='${NAME_PREFIX}-users-client'].ClientId" --output text 2>/dev/null || echo "")
+                if [ -n "$CLIENT_ID" ]; then
+                  echo "✓ Found Cognito User Pool Client, adding import block"
+                  {
+                    echo ""
+                    echo "# Cognito User Pool Client (detected in AWS)"
+                    echo "import {"
+                    echo "  to = module.cognito.aws_cognito_user_pool_client.main"
+                    echo "  id = \"$USER_POOL_ID/$CLIENT_ID\""
+                    echo "}"
+                  } >> import.tf || echo "⚠️  Warning: Failed to add Cognito client import block"
+                fi
+                
                 # Check if domain exists for this pool
                 DOMAIN_EXISTS=$(aws cognito-idp describe-user-pool --user-pool-id "$USER_POOL_ID" --query 'UserPool.Domain' --output text 2>/dev/null || echo "")
                 if [ -n "$DOMAIN_EXISTS" ] && [ "$DOMAIN_EXISTS" != "None" ]; then
@@ -388,6 +412,12 @@ jobs:
               fi
               
               echo "✅ Import configuration enabled (import.tf)"
+              echo ""
+              echo "Generated import.tf contents (for debugging):"
+              echo "Note: This shows resource identifiers only, no secrets or credentials"
+              echo "======================================"
+              cat import.tf || echo "Failed to read import.tf"
+              echo "======================================"
               echo ""
               echo "Terraform will automatically import existing resources"
               echo "to prevent 'EntityAlreadyExists' errors."
