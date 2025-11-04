@@ -413,7 +413,8 @@ jobs:
               
               echo "✅ Import configuration enabled (import.tf)"
               echo ""
-              echo "Generated import.tf contents:"
+              echo "Generated import.tf contents (for debugging):"
+              echo "Note: This shows resource identifiers only, no secrets or credentials"
               echo "======================================"
               cat import.tf || echo "Failed to read import.tf"
               echo "======================================"
